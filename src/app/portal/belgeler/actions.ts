@@ -1,5 +1,4 @@
 "use server";
-import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db, schema as s } from "@/db";
@@ -26,7 +25,6 @@ export async function acceptContract(_: AcceptState, f: FormData): Promise<Accep
     const h = await headers();
     await db.insert(s.contractAcceptances).values({ templateId: t.id, partyId: scope.partyId, userId: user.id, signerName: name, signerTitle: title || null, textHash: textHash(t.body), method: sigKey ? "DRAWN" : "CLICKWRAP", signatureImageKey: sigKey, ip: (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || null, userAgent: h.get("user-agent")?.slice(0, 200) ?? null });
     await db.insert(s.auditLog).values({ entity: "contract", entityId: `${t.code}-v${t.version}`, action: "ACCEPT", after: { partyId: scope.partyId, name, title, method: sigKey ? "DRAWN" : "CLICKWRAP" }, actorId: user.username ?? user.email });
-    revalidatePath("/portal/belgeler"); revalidatePath("/portal");
     return { ok: true, message: `${t.title} onaylandı` };
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }

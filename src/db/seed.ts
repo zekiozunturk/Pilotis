@@ -12,7 +12,7 @@ import { hashPassword } from "../lib/password";
 import { textHash } from "../lib/contracts-hash";
 
 async function main() {
-  await db.execute(sql`TRUNCATE sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE outbox, notifications, password_resets, sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -228,7 +228,7 @@ async function main() {
     { username: "kaptan", email: "kaptan@yalovapilotaj.com", name: pilot.name.replace("ÖRNEK ", ""), title: "Kılavuz kaptan", roles: ["PILOT"], personnelId: pilot.id },
     { username: "romorkor", email: "romorkor@yalovapilotaj.com", name: tugMaster.name.replace("ÖRNEK ", "").split(" · ")[0] + " · R1-A", title: "Römorkör kaptanı", roles: ["TUG_MASTER"], personnelId: tugMaster.id },
     { username: "kiyi", email: "kiyi@yalovapilotaj.com", name: shore.name.replace("ÖRNEK ", ""), title: "Kıyı operasyon sorumlusu", roles: ["SHORE_OPS"], personnelId: shore.id },
-    { username: "musteri", email: "musteri@ornekacente.com.tr", name: "ÖRNEK Acente Yetkilisi", title: "Operasyon müdürü", roles: ["CUSTOMER", "BILLING_PARTY"], partyId: agent.id },
+    { username: "musteri", email: "musteri@ornekacente.com.tr", name: "ÖRNEK Acente Yetkilisi", title: "Operasyon müdürü", roles: ["CUSTOMER", "BILLING_PARTY"], partyId: agent.id, partyAdmin: true, phone: "0 532 000 00 00" },
     { username: "muhasebe", email: "muhasebe@yalovapilotaj.com", name: "ÖRNEK Muhasebe Sorumlusu", title: "Muhasebe şefi", roles: ["ACCOUNTING"] },
   ].map((u) => ({ ...u, passwordHash: pw, isDemo: true }) as typeof s.users.$inferInsert);
   await db.insert(s.users).values(demoUsers);

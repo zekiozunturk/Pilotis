@@ -1,6 +1,7 @@
 "use client";
 import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import type { ActionState } from "@/app/actions";
+import { useRouter } from "next/navigation";
 
 type Action = (s: ActionState, f: FormData) => Promise<ActionState>;
 const Pending = createContext(false);
@@ -27,7 +28,10 @@ export function SubmitButton({ children, className = "btn", name, value }: { chi
 export function ActionForm({ action, children, hidden = {}, className, resetOnOk }: { action: Action; children: ReactNode; hidden?: Record<string, string>; className?: string; resetOnOk?: boolean }) {
   const [state, formAction, pending] = useActionState(action, null);
   const ref = useRef<HTMLFormElement>(null);
+  const router = useRouter();
   useEffect(() => { if (state?.ok && resetOnOk) ref.current?.reset(); }, [state, resetOnOk]);
+  // Sunucu yönlendirmesi yerine istemci yönlendirmesi: aynı sayfaya yönlendirmede takılmayı önler
+  useEffect(() => { if (state?.ok && state.redirectTo) router.push(state.redirectTo); }, [state, router]);
   return (
     <Pending.Provider value={pending}>
       <form onSubmit={submitWith(formAction)} className={className} ref={ref}>

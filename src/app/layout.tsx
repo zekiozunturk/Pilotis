@@ -6,7 +6,10 @@ import { BRAND, OPERATOR } from "@/data/catalog";
 import { currentScope, currentUser, ROLE_LABELS } from "@/lib/session";
 import { logout } from "./giris/actions";
 import { db, schema as s } from "@/db";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { setRole, setDisplayCurrency } from "./actions";
 import { getDisplay } from "@/lib/display";
 import { getUiState } from "@/lib/ui-prefs-server";
@@ -35,9 +38,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </html>
     );
   }
+  // Geçici şifreyle giren kullanıcı, şifresini değiştirmeden başka sayfaya geçemez
+  if (user.mustChangePassword) { const path = (await headers()).get("x-pathname") ?? ""; if (!path.startsWith("/hesabim")) redirect("/hesabim?zorunlu=1"); }
   const { role, external, partyId } = await currentScope();
   const display = await getDisplay();
   const isAdmin = user.roles.includes("SYSTEM_ADMIN");
+  const [{ unread }] = await db.select({ unread: sql<number>`count(*)::int` }).from(s.notifications).where(and(eq(s.notifications.userId, user.id), isNull(s.notifications.readAt)));
   const party = user.partyId ? (await db.select({ n: s.parties.legalName }).from(s.parties).where(eq(s.parties.id, user.partyId)))[0]?.n : null;
   const companies = await db.select({ id: s.parties.id, name: s.parties.legalName }).from(s.parties).where(eq(s.parties.kind, "COMPANY")).orderBy(asc(s.parties.legalName));
   return (
@@ -85,6 +91,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </form>
               )}
               <div className="userbox">
+                <Link href="/bildirimler" className="bell" aria-label={`Bildirimler${unread ? `, ${unread} okunmamış` : ""}`} title="Bildirimler"><span aria-hidden>🔔</span>{unread > 0 && <span className="n">{unread > 99 ? "99+" : unread}</span>}</Link>
                 <span className="avatar" aria-hidden>{user.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}</span>
                 <span className="who"><b>{user.name}</b><span>{ROLE_LABELS[role]}{role !== user.roles[0] && isAdmin ? " (önizleme)" : ""}{party ? ` · ${party}` : ""}</span></span>
                 <form action={logout}><button className="btn secondary" type="submit">Çıkış</button></form>

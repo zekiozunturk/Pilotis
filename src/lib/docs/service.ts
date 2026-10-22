@@ -80,6 +80,8 @@ export async function generateDocument(ref: string, type: DocType, actor: string
     await db.update(s.billingApprovals).set({ decision: "PENDING", decidedAt: null, note: `${docNo} yeni sürüm: yeniden onay gerekli` }).where(eq(s.billingApprovals.operationId, o.op.id));
     await db.update(s.operations).set({ approvalStatus: "AWAITING_BILLING_PARTY" }).where(eq(s.operations.id, o.op.id));
     invalidated = true;
+    const { notifyBillingPending } = await import("../op-notify");
+    await notifyBillingPending(o.op.id, null, `${docNo} yeni sürüm üretildi; önceki onay bu sürümü kapsamıyor`);
   }
   await recordAudit("document", row.id, "GENERATE", { type, version, sha256: stored.sha256, snapshot: hash, invalidated }, actor);
   return { id: row.id, version, fileName, created: true, invalidatedApproval: invalidated };

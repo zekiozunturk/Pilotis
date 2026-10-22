@@ -9,7 +9,7 @@ const ALL: { title: string; items: Item[] }[] = [
   { title: "Analiz", items: [["/analiz", "◔", "Performans & analiz"]] },
   { title: "Kayıtlar", items: [["/gemiler", "▲", "Gemiler"], ["/taraflar", "◇", "Taraflar & tesisler"], ["/filo", "⛴", "Filo"], ["/personel", "●", "Personel"]] },
   { title: "Kural & Tarife", items: [["/katalog", "≡", "Hizmet kataloğu"], ["/tarife", "∑", "Tarife & fiyat listesi"], ["/kurlar", "¤", "Döviz kurları"], ["/kurallar", "§", "Mevzuat / kurallar"], ["/acik-konular", "!", "Açık konular"]] },
-  { title: "Sistem", items: [["/yonetim", "⚿", "Sistem yönetimi"], ["/yonetim/kullanicilar", "☺", "Kullanıcılar"], ["/terminoloji", "Aa", "Terminoloji"], ["/aktarim", "⇅", "Excel aktarım"], ["/ayarlar", "⚙", "Ayarlar"], ["/hesabim", "◉", "Hesabım"]] },
+  { title: "Sistem", items: [["/yonetim", "⚿", "Sistem yönetimi"], ["/yonetim/kullanicilar", "☺", "Kullanıcılar"], ["/yonetim/bildirimler", "✉", "E-posta ve SMS"], ["/terminoloji", "Aa", "Terminoloji"], ["/aktarim", "⇅", "Excel aktarım"], ["/ayarlar", "⚙", "Ayarlar"], ["/hesabim", "◉", "Hesabım"]] },
 ];
 const FIELD = ["/saha", "/operasyonlar", "/planlama/rotasyon", "/analiz", "/filo", "/terminoloji", "/hesabim"];
 /** Rolün menüde gördüğü sayfalar (yetki ayrıca sunucuda denetlenir) */

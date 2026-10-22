@@ -21,6 +21,7 @@ export function LoginForm({ next, demo }: { next: string; demo: { username: stri
             <button type="button" className="pw-eye" onClick={() => setShow(!show)} aria-label={show ? "Şifreyi gizle" : "Şifreyi göster"}>{show ? "Gizle" : "Göster"}</button>
           </span>
         </label>
+        <div style={{ textAlign: "right", marginTop: -6 }}><a href="/sifremi-unuttum" className="small">Şifremi unuttum</a></div>
         {state && !state.ok && <div className="alert bad" role="alert"><span>✕</span><div>{state.message}</div></div>}
         <button className="btn orange big" disabled={pending}>{pending ? "Giriş yapılıyor…" : "Giriş yap"}</button>
       </form>

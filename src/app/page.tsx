@@ -7,7 +7,7 @@ import { STATUS_LABELS, OPERATOR } from "@/data/catalog";
 import { fmtDT } from "@/lib/format";
 import { Board } from "@/components/Board";
 import { db, schema as sc } from "@/db";
-import { and, lte, gt, eq } from "drizzle-orm";
+import { and, asc, inArray, lte, gt, eq } from "drizzle-orm";
 
 export const metadata = { title: "Kokpit" };
 
@@ -23,6 +23,8 @@ export default async function Home() {
     .where(and(eq(sc.shifts.category, "WORK"), lte(sc.shifts.startAt, now), gt(sc.shifts.endAt, now)));
   const duty = [...new Map(onDuty.map((x) => [x.a.id, x])).values()].sort((x, y) => (x.a.code ?? "").localeCompare(y.a.code ?? "", "tr", { numeric: true }));
   const { ops, fleet, rules, issues } = await dashboardData();
+  const incoming = await db.select({ op: sc.operations, vessel: sc.vessels.name, party: sc.parties.legalName }).from(sc.operations).innerJoin(sc.portCalls, eq(sc.portCalls.id, sc.operations.portCallId)).innerJoin(sc.vessels, eq(sc.vessels.id, sc.portCalls.vesselId)).leftJoin(sc.parties, eq(sc.parties.id, sc.operations.requesterPartyId))
+    .where(inArray(sc.operations.requestStatus, ["SUBMITTED", "INFO_MISSING", "IN_REVISION"])).orderBy(asc(sc.operations.plannedStart));
   const active = ops.filter((o) => ["TRANSIT", "ON_SITE", "STARTED", "PAUSED"].includes(o.op.opStatus));
   const open = ops.filter((o) => !["COMPLETED", "CANCELLED", "PARTIAL"].includes(o.op.opStatus));
   const noBilling = ops.filter((o) => !o.op.billingPartyId);
@@ -57,6 +59,16 @@ export default async function Home() {
         { id: "k-active", title: "Devam eden operasyon", kind: "kpi", node: <Link href="/operasyonlar" className="card kpi accent" style={{ display: "block" }}><div className="v">{active.length}</div><div className="l">Devam eden operasyon</div></Link> },
         { id: "k-tugs", title: "Kullanılabilir römorkör", kind: "kpi", node: <Link href="/filo" className="card kpi" style={{ display: "block" }}><div className="v">{tugs.filter((t) => t.available).length}/{tugs.length}</div><div className="l">Kullanılabilir römorkör</div></Link> },
         { id: "k-accrual", title: "Tahakkuku onaysız", kind: "kpi", node: <Link href="/analiz/finans" className="card kpi accent" style={{ display: "block" }}><div className="v">{closedNoAccrual.length}</div><div className="l">Kapanmış, tahakkuku onaysız</div></Link> },
+        { id: "p-incoming", title: "Karar bekleyen talepler", span: 3, node: (
+          <div className="card">
+            <h2>Karar bekleyen talepler ({incoming.length})</h2>
+            {incoming.length === 0 ? <div className="empty">Yeni talep yok.</div> : (
+              <table><thead><tr><th>İş emri</th><th>Gemi</th><th>Talep eden</th><th>İstenen</th><th>Muhatap onayı</th></tr></thead><tbody>
+                {incoming.slice(0, 8).map((x) => <tr key={x.op.id}><td><Link className="mono" href={`/operasyonlar/${x.op.ref}`}>{x.op.ref}</Link>{x.op.requestStatus === "INFO_MISSING" && <> <span className="badge warn">eksik bilgi</span></>}</td><td>{x.vessel}</td><td className="small">{x.party ?? "—"}</td><td className="small">{fmtDT(x.op.plannedStart)}</td><td><span className={`badge ${x.op.approvalStatus === "OPS_REVIEW" ? "ok" : "warn"}`}>{x.op.approvalStatus === "OPS_REVIEW" ? "onaylandı" : "bekliyor"}</span></td></tr>)}
+              </tbody></table>
+            )}
+          </div>
+        ) },
         { id: "p-recent", title: "Son iş emirleri", span: 3, node: (
           <div className="card">
             <div className="tablewrap" style={{ border: 0 }}>

@@ -7,6 +7,7 @@ import type { Role } from "@/lib/workflow";
 import { checkInterval, saveShift, candidatesFor, exceptionsThisMonth, EXCEPTION_MONTHLY_LIMIT, labelOf } from "@/lib/planning/service";
 import { recordAudit } from "@/lib/ops";
 import type { Violation } from "@/lib/planning/rest";
+import { notify } from "@/lib/notify";
 
 export type PlanState = {
   ok: boolean; message: string; at?: string; saved?: boolean; needsException?: boolean;
@@ -97,6 +98,7 @@ export async function assignCrew(_: PlanState, f: FormData): Promise<PlanState> 
     await db.insert(s.assignments).values({ operationId: op.id, personnelId: x.personnelId, assetId: p.homeAssetId, roleOnTask: p.title, from: x.start, to: x.end, firm: false });
     if (op.planningStatus === "AWAITING_RESOURCE") await db.update(s.operations).set({ planningStatus: "TENTATIVE" }).where(eq(s.operations.id, op.id));
     await recordAudit("operation", opRef, "ASSIGN_CREW", { personnelId: x.personnelId }, role);
+    await notify({ personnelIds: [x.personnelId] }, { kind: "TASK_ASSIGNED", ref: opRef, link: `/operasyonlar/${opRef}#olaylar`, title: `Yeni görev: ${opRef}`, body: `${new Date(x.start).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "short", timeStyle: "short" })} – ${new Date(x.end).toLocaleTimeString("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" })} · ${p.title}. Görevlerim ekranından ayrıntıya bakın.` });
     revalidatePath("/planlama"); revalidatePath(`/operasyonlar/${opRef}`);
     return { ok: true, saved: true, message: `${p.fullName} ${opRef} görevine geçici olarak atandı`, at: new Date().toISOString() };
   } catch (e) { return { ok: false, message: (e as Error).message }; }

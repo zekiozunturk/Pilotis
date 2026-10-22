@@ -7,6 +7,7 @@ import { hashPassword, passwordProblem } from "@/lib/password";
 import { createSession } from "@/lib/session";
 import { currentTemplates, textHash } from "@/lib/contracts";
 import { vknValid } from "@/lib/exchange/parse";
+import { notify } from "@/lib/notify";
 
 export type RegState = { ok: false; message: string; field?: string; values?: Record<string, string> } | null;
 const KINDS = { AGENT: "Acente", OWNER: "Armatör / gemi sahibi", OPERATOR_MANAGER: "Gemi işletmecisi", SHIPYARD: "Tersane", CHARTERER: "Kiracı" } as const;
@@ -41,11 +42,12 @@ export async function register(_: RegState, f: FormData): Promise<RegState> {
   const userId = await db.transaction(async (tx) => {
     const [p] = await tx.insert(s.parties).values({ kind: "COMPANY", legalName, taxNumber, taxOffice: g("taxOffice"), address: g("address"), city: g("city") || null, country: (g("country") || "TR").toUpperCase().slice(0, 2), phone: g("phone") || null, email, registrationStatus: "PENDING_REVIEW" }).returning();
     await tx.insert(s.partyRoles).values([{ partyId: p.id, role: kind }, { partyId: p.id, role: "BILLING_PARTY" }]);
-    const [u] = await tx.insert(s.users).values({ username, email, name: g("name"), title: g("title") || null, phone: g("phone") || null, roles: ["CUSTOMER", "BILLING_PARTY"], partyId: p.id, passwordHash: hashPassword(pw) }).returning();
+    const [u] = await tx.insert(s.users).values({ username, email, name: g("name"), title: g("title") || null, phone: g("phone") || null, roles: ["CUSTOMER", "BILLING_PARTY"], partyId: p.id, partyAdmin: true, passwordHash: hashPassword(pw) }).returning();
     for (const t of tpls.filter((t) => accept.includes(t.code))) await tx.insert(s.contractAcceptances).values({ templateId: t.id, partyId: p.id, userId: u.id, signerName: u.name, signerTitle: u.title, textHash: textHash(t.body), method: "CLICKWRAP", ip, userAgent: ua });
     await tx.insert(s.auditLog).values({ entity: "auth", entityId: u.id, action: "REGISTER", after: { party: legalName, taxNumber, accepted: accept }, actorId: username });
     return u.id;
   });
   await createSession(userId);
+  await notify({ roles: ["SYSTEM_ADMIN", "ACCOUNTING"] }, { kind: "REGISTRATION", link: "/yonetim", title: `Yeni müşteri kaydı: ${legalName}`, body: `Vergi no ${taxNumber} · ${g("taxOffice")} · yetkili ${g("name")} (${email}). Cari doğrulaması bekliyor.` });
   redirect("/portal?hosgeldin=1");
 }

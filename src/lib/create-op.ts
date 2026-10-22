@@ -2,16 +2,17 @@ import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { nextOperationRef, recordAudit } from "./ops";
+import { notifyNewRequest } from "./op-notify";
 import type { Declaration } from "./declaration";
 
 export interface NewOp {
   vesselId: string; typeCode: string; fromFacilityId?: string | null; toFacilityId?: string | null;
-  plannedStart: Date; requesterPartyId: string; billingPartyId?: string | null; declaration: Declaration; actor?: string; source: string;
+  plannedStart: Date; requesterPartyId: string; billingPartyId?: string | null; declaration: Declaration; actor?: string; actorUserId?: string | null; source: string;
 }
 
 /** Talepten operasyon kaydı: v1 müşteri beyanı + hizmet satırları + (varsa) muhatap onay kaydı */
 export async function createOperationRecord(n: NewOp): Promise<{ id: string; ref: string }> {
-  return db.transaction(async (tx) => {
+  const r = await db.transaction(async (tx) => {
     const [type] = await tx.select().from(s.operationTypes).where(eq(s.operationTypes.code, n.typeCode));
     if (!type) throw new Error("Operasyon türü bulunamadı");
     const [lastCall] = await tx.select().from(s.portCalls).where(eq(s.portCalls.vesselId, n.vesselId)).orderBy(desc(s.portCalls.createdAt)).limit(1);
@@ -36,6 +37,8 @@ export async function createOperationRecord(n: NewOp): Promise<{ id: string; ref
     await tx.insert(s.auditLog).values({ entity: "operation", entityId: ref, action: "CREATE", after: { source: n.source, typeCode: n.typeCode } as object, actorId: n.actor });
     return { id: op.id, ref };
   });
+  await notifyNewRequest(r.id, n.actorUserId ?? null);
+  return r;
 }
 
 export function istanbulDate(local: string): Date {

@@ -1,6 +1,6 @@
 "use client";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
-import { verifyDeclaration, setBillingParty, decideBilling, saveCalculation } from "@/app/actions";
+import { verifyDeclaration, setBillingParty, decideBilling, saveCalculation, decideRequest } from "@/app/actions";
 import { SignaturePad } from "@/components/SignaturePad";
 
 export function VerifyForm({ opRef, gt, engine, cargo }: { opRef: string; gt: string; engine: string; cargo: string }) {
@@ -56,6 +56,20 @@ export function SaveCalcForm({ opRef }: { opRef: string }) {
   return (
     <ActionForm action={saveCalculation} hidden={{ ref: opRef }}>
       <SubmitButton className="btn">Hesabı kayda al</SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function RequestDecisionForm({ opRef }: { opRef: string }) {
+  return (
+    <ActionForm action={decideRequest} hidden={{ ref: opRef }}>
+      <div className="field"><label>Müşteriye not (ret ve eksik bilgide zorunlu)</label><input name="note" placeholder="ör. GT belgesi ekleyin / istenen saatte römorkör uygun değil, 14:00 önerilir" /></div>
+      <div className="toolbar" style={{ marginTop: 8 }}>
+        <SubmitButton className="btn orange" name="decision" value="ACCEPTED">Talebi kabul et</SubmitButton>
+        <SubmitButton className="btn secondary" name="decision" value="INFO_MISSING">Eksik bilgi iste</SubmitButton>
+        <SubmitButton className="btn danger" name="decision" value="REJECTED">Reddet</SubmitButton>
+      </div>
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Karar müşteriye ve fatura muhatabına bildirim olarak gider. Kabul, römorkör sayısını ve kesin saati bağlamaz; bunlar planlamada kesinleşir.</div>
     </ActionForm>
   );
 }

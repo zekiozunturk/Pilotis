@@ -24,7 +24,7 @@ export default async function Yonetim() {
     <>
       <div className="pagehead">
         <div><h1>Sistem yönetimi</h1><div className="muted">Kullanıcılar, müşteri kayıtları, oturum güvenliği ve sistem durumu.</div></div>
-        <div className="toolbar"><Link className="btn orange" href="/yonetim/kullanicilar">Kullanıcıları yönet</Link><Link className="btn secondary" href="/ayarlar/tema">Tema Stüdyosu</Link><Link className="btn secondary" href="/aktarim">Excel aktarım</Link></div>
+        <div className="toolbar"><Link className="btn orange" href="/yonetim/kullanicilar">Kullanıcıları yönet</Link><Link className="btn secondary" href="/yonetim/bildirimler">E-posta ve SMS</Link><Link className="btn secondary" href="/ayarlar/tema">Tema Stüdyosu</Link><Link className="btn secondary" href="/aktarim">Excel aktarım</Link></div>
       </div>
       <div className="tiles" style={{ marginBottom: 16 }}>
         <Link href="/yonetim/kullanicilar" className="tile"><div className="l">Aktif kullanıcı</div><div className="v">{users}</div></Link>

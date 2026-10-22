@@ -14,6 +14,7 @@ import { canTransition, OP_STATUS_TRANSITIONS, type Role } from "@/lib/workflow"
 import { computeOperation, loadOperation, nextOperationRef, recordAudit } from "@/lib/ops";
 import { createHash } from "node:crypto";
 import { imoValid } from "@/lib/exchange/parse";
+import { notifyBillingDecided, notifyBillingPending, notifyNewRequest, notifyOpClosed, notifyRequestDecided } from "@/lib/op-notify";
 import { calculate as calcEngine, selectTariffVersion as pickVersion } from "@/lib/tariff/engine";
 import { loadTariffs, ruleStatusMap } from "@/lib/ops";
 import { getFxTable } from "@/lib/fx";
@@ -124,6 +125,7 @@ export async function createOperation(_: unknown, formData: FormData) {
   if (billing) await db.insert(s.billingApprovals).values({ operationId: op.id, billingPartyId: billing });
   await db.insert(s.serviceLines).values(type.serviceKinds.map((k) => ({ operationId: op.id, kind: k })));
   await recordAudit("operation", ref, "CREATE", op, undefined, `idem:${d.idempotencyKey}`);
+  await notifyNewRequest(op.id, (await requireUser()).id);
   redirect(`/operasyonlar/${ref}`);
 }
 
@@ -186,6 +188,7 @@ async function closeOperationImpl(formData: FormData) {
   // Operasyonun kapanması tahakkuk/fatura/bildirimi tamamlamaz
   await db.update(s.operations).set({ opStatus: outcome as "COMPLETED", version: o.op.version + 1, updatedAt: new Date() }).where(eq(s.operations.id, o.op.id));
   await recordAudit("operation", ref, `CLOSE:${outcome}`, { reason });
+  await notifyOpClosed(o.op.id, outcome, reason);
   revalidatePath(`/operasyonlar/${ref}`);
 }
 
@@ -216,6 +219,7 @@ async function verifyDeclarationImpl(formData: FormData) {
   if (impact.requiresReapproval && o.billing?.decision === "APPROVED") {
     await db.update(s.billingApprovals).set({ decision: "PENDING", decidedAt: null, note: `Beyan değişti (v${nextVersion}): ${impact.changes.map((c) => c.label).join(", ")}` }).where(eq(s.billingApprovals.operationId, o.op.id));
     await db.update(s.operations).set({ approvalStatus: "AWAITING_BILLING_PARTY" }).where(eq(s.operations.id, o.op.id));
+    await notifyBillingPending(o.op.id, null, "beyan değiştiği için yeniden onay gerekiyor");
     reapproval = true;
   }
   await recordAudit("operation", ref, "FIELD_VERIFIED", { version: nextVersion, impact });
@@ -235,6 +239,7 @@ async function setBillingPartyImpl(formData: FormData) {
   await db.insert(s.billingApprovals).values({ operationId: o.op.id, billingPartyId })
     .onConflictDoUpdate({ target: s.billingApprovals.operationId, set: { billingPartyId, decision: "PENDING", decidedAt: null } });
   await recordAudit("operation", ref, "SET_BILLING_PARTY", { billingPartyId });
+  await notifyBillingPending(o.op.id, (await requireUser()).id);
   revalidatePath(`/operasyonlar/${ref}`);
 }
 
@@ -264,10 +269,30 @@ async function decideBillingImpl(formData: FormData) {
   });
   await db.update(s.billingApprovals).set({ decision, authorizedPerson: person || null, taxVerified, decidedAt: new Date(), approvedDocVersionId: doc.id, note: null })
     .where(eq(s.billingApprovals.operationId, o.op.id));
-  await db.update(s.operations).set({ approvalStatus: decision === "APPROVED" ? "OPS_REVIEW" : "AWAITING_BILLING_PARTY" }).where(eq(s.operations.id, o.op.id));
+  await db.update(s.operations).set({ approvalStatus: decision === "APPROVED" ? (o.op.requestStatus === "ACCEPTED" ? "COMPLETE" : "OPS_REVIEW") : "AWAITING_BILLING_PARTY" }).where(eq(s.operations.id, o.op.id));
   await recordAudit("operation", ref, `BILLING_${decision}`, { person, taxVerified, doc: doc.fileName, level: sigKey ? "DRAWN" : "OTP_ACCOUNT" });
+  await notifyBillingDecided(o.op.id, decision, person, (await requireUser()).id);
   revalidatePath(`/operasyonlar/${ref}`);
   return decision === "APPROVED" ? `Onay ${doc.fileName} sürümüne bağlandı` : "Ret kaydedildi";
+}
+
+// ───────── Yalova Pilotaj talep kararı ─────────
+async function decideRequestImpl(formData: FormData) {
+  await requireRole(["OPERATIONS_MANAGER", "SHORE_OPS", "PLANNER", "BUSINESS_MANAGER"]);
+  const ref = String(formData.get("ref"));
+  const decision = String(formData.get("decision")) as "ACCEPTED" | "REJECTED" | "INFO_MISSING";
+  const note = String(formData.get("note") ?? "").trim() || null;
+  if (!["ACCEPTED", "REJECTED", "INFO_MISSING"].includes(decision)) throw new Error("Geçersiz karar");
+  if (decision !== "ACCEPTED" && !note) throw new Error(decision === "REJECTED" ? "Ret gerekçesi yazın — müşteriye iletilir" : "Hangi bilginin eksik olduğunu yazın — müşteriye iletilir");
+  const o = await loadOperation(ref);
+  if (!o) throw new Error("Operasyon bulunamadı");
+  if (!["SUBMITTED", "INFO_MISSING", "IN_REVISION"].includes(o.op.requestStatus)) throw new Error("Bu talep için karar zaten verilmiş");
+  const approval = decision === "ACCEPTED" && o.op.approvalStatus === "OPS_REVIEW" ? "COMPLETE" : o.op.approvalStatus;
+  await db.update(s.operations).set({ requestStatus: decision, approvalStatus: approval, version: o.op.version + 1, updatedAt: new Date() }).where(eq(s.operations.id, o.op.id));
+  await recordAudit("operation", ref, `REQUEST_${decision}`, { note });
+  await notifyRequestDecided(o.op.id, decision, note);
+  revalidatePath(`/operasyonlar/${ref}`); revalidatePath("/");
+  return decision === "ACCEPTED" ? "Talep kabul edildi — müşteriye bildirildi" : decision === "REJECTED" ? "Talep reddedildi — müşteriye gerekçe iletildi" : "Eksik bilgi istendi — müşteriye bildirildi";
 }
 
 // ───────── Belgeler ─────────
@@ -335,7 +360,7 @@ async function saveCalculationImpl(formData: FormData) {
 }
 
 // ───────── Durum döndüren sarmalayıcılar (sunucudan başarı gelmeden 'kaydedildi' denmez) ─────────
-export type ActionState = { ok: boolean; message: string; at?: string } | null;
+export type ActionState = { ok: boolean; message: string; at?: string; redirectTo?: string } | null;
 async function run(fn: () => Promise<unknown>, okMsg: string): Promise<ActionState> {
   try { const r = await fn(); return { ok: true, message: typeof r === "string" ? r : okMsg, at: new Date().toISOString() }; }
   catch (e) { return { ok: false, message: (e as Error).message || "İşlem başarısız" }; }
@@ -345,6 +370,7 @@ export async function closeOperation(_: ActionState, formData: FormData): Promis
 export async function verifyDeclaration(_: ActionState, formData: FormData): Promise<ActionState> { return run(() => verifyDeclarationImpl(formData), "Saha doğrulaması yeni sürüm olarak kaydedildi"); }
 export async function setBillingParty(_: ActionState, formData: FormData): Promise<ActionState> { return run(() => setBillingPartyImpl(formData), "Fatura muhatabı atandı; onayı bekleniyor"); }
 export async function decideBilling(_: ActionState, formData: FormData): Promise<ActionState> { return run(() => decideBillingImpl(formData), "Karar kaydedildi"); }
+export async function decideRequest(_: ActionState, formData: FormData): Promise<ActionState> { return run(() => decideRequestImpl(formData), "Karar kaydedildi"); }
 export async function saveCalculation(_: ActionState, formData: FormData): Promise<ActionState> { return run(() => saveCalculationImpl(formData), "Hesap kaydı oluşturuldu"); }
 
 // ───────── Hesap simülatörü (kayıt oluşturmaz) ─────────

@@ -13,7 +13,7 @@ import { getDisplay } from "@/lib/display";
 import { displayAlt, fmtCcy } from "@/lib/money";
 import { INVOICE_NOTE } from "@/data/catalog";
 import { FieldActions } from "./field";
-import { VerifyForm, BillingPartyForm, BillingDecisionForm, SaveCalcForm } from "./forms";
+import { VerifyForm, BillingPartyForm, BillingDecisionForm, SaveCalcForm, RequestDecisionForm } from "./forms";
 import { DocumentsPanel, type DocRow } from "./docs";
 import { DOC_TYPES } from "@/lib/docs/builders";
 import { currentScope } from "@/lib/session";
@@ -78,6 +78,14 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
         ))}
       </div>
 
+      {internal && ["SUBMITTED", "INFO_MISSING", "IN_REVISION"].includes(o.op.requestStatus) && !["PILOT", "TUG_MASTER", "CREW", "ACCOUNTING"].includes(scope.role) && (
+        <div className="card decision" style={{ marginBottom: 16 }}>
+          <h2>Talep kararı — Yalova Pilotaj onayı</h2>
+          <div className="small muted" style={{ marginBottom: 8 }}>Talep {fmtDT(o.op.requestedAt)} tarihinde geldi. Fatura muhatabı: {o.billing ? (o.billing.decision === "APPROVED" ? "onayladı ✓" : "onay bekliyor") : "belirlenmedi"}.</div>
+          <RequestDecisionForm opRef={o.op.ref} />
+        </div>
+      )}
+      {o.op.requestStatus === "INFO_MISSING" && !internal && <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>Yalova Pilotaj eksik bilgi istiyor</b>Bildirimlerinizdeki notu okuyup Yalova Pilotaj operasyon ile iletişime geçin.</div></div>}
       <div className="grid g2">
         {/* Sol sütun */}
         <div className="grid" style={{ alignContent: "start" }}>
@@ -97,7 +105,7 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
             <div className="sep" />
             {o.billing?.note && <div className="alert warn" style={{ marginBottom: 8 }}><span>↻</span><div><b>Yeniden onay gerekiyor</b>{o.billing.note}</div></div>}
             {internal && !o.op.billingPartyId && <BillingPartyForm opRef={o.op.ref} parties={companies} />}
-            {o.billing && o.billing.decision !== "APPROVED" && (internal || scope.partyId === o.billing.billingPartyId) && <BillingDecisionForm opRef={o.op.ref} />}
+            {o.billing && o.billing.decision !== "APPROVED" && (internal || scope.partyId === o.billing.billingPartyId) && <BillingDecisionForm opRef={o.op.ref} customer={!internal} />}
             {o.op.billingPartyId && o.op.billingPartyId === o.op.requesterPartyId && <div className="muted" style={{ fontSize: 12 }}>Talep eden ile muhatap aynı — yine de ayrı onay kaydı tutulur.</div>}
           </div>
 

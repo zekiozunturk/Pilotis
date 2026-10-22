@@ -5,6 +5,9 @@ import { analyticsAccess } from "@/lib/analytics/access";
 import type { Role } from "@/lib/workflow";
 import type { ReportDef } from "@/lib/analytics/report";
 import { computeReport } from "@/app/analiz/rapor/compute";
+import { buildWorkbook, type ColType } from "@/lib/excel";
+import { storage } from "@/lib/storage";
+import { queueEmail, smtpConfigured } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 const scopeToFilter = (scope: string, now = new Date()) => {
@@ -33,10 +36,18 @@ export async function POST(req: NextRequest) {
       const acc = analyticsAccess(r.role);
       const needFinance = def.measures.some((m) => ["accrual", "invoiced", "credit", "net", "tax", "collected", "open", "disputed", "estimate", "related", "allocated", "cost"].includes(m.key));
       if (!acc.reports || (needFinance && !acc.finance)) { lines.push(`${r.email}: yetki yok — gönderilmedi`); continue; }
-      try { const c = await computeReport(def, scopeToFilter(sc.dataScope), { role: r.role }); produced++; lines.push(`${r.email}: ${c.out.rows.length} satır hazırlandı`); }
-      catch (e) { lines.push(`${r.email}: ${(e as Error).message}`); }
+      try {
+        const c = await computeReport(def, scopeToFilter(sc.dataScope), { role: r.role });
+        const { columns, rows, totals } = c.out;
+        const totalsRow = Object.keys(totals).length ? { ...Object.fromEntries(columns.map((x) => [x.key, totals[x.key] ?? null])), [columns[0].key]: "Genel toplam" } : null;
+        const { buffer, reportId } = await buildWorkbook({ title: def.title, meta: c.meta, preparedBy: "Zamanlanmış rapor", sheets: [{ name: def.title, columns: columns.map((x) => ({ key: x.key, header: x.label, type: (x.type === "date" ? "text" : x.type) as ColType })), rows: totalsRow ? [...rows, totalsRow] : rows, totals: false }] });
+        const fname = `PILOTIS_${def.title.replace(/[^\p{L}\p{N}]+/gu, "_").slice(0, 40)}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const key = (await storage.put(`raporlar/${sc.id}/${reportId}_${r.email.replace(/[^a-z0-9]/gi, "_")}.xlsx`, Buffer.from(buffer))).key;
+        const o = await queueEmail(r.email, { kind: "REPORT", title: def.title, body: `${sc.dataScope} dönemi raporu ektedir (${rows.length} satır).\nRapor kimliği: ${reportId}. Faturalar TL kesilir; döviz gösterimleri bilgi amaçlıdır.`, link: "/analiz/rapor" }, [{ name: fname, storageKey: key, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }]);
+        produced++; lines.push(`${r.email}: ${rows.length} satır · ${o.status === "SENT" ? "gönderildi" : o.status === "NO_CONFIG" ? "e-posta altyapısı yok, kuyrukta" : `hata: ${o.error}`}`);
+      } catch (e) { lines.push(`${r.email}: ${(e as Error).message}`); }
     }
-    const transport = process.env.SMTP_URL ? "gönderildi" : "e-posta altyapısı yapılandırılmadı (SMTP_URL) — dosya üretildi, gönderilmedi";
+    const transport = smtpConfigured() ? "e-posta ile gönderildi" : "e-posta altyapısı tanımlı değil — dosyalar üretildi ve kuyrukta bekliyor";
     const result = `${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })} · ${produced}/${recips.length} alıcı · ${transport} · ${lines.join("; ")}`;
     await db.update(s.reportSchedules).set({ lastRunAt: new Date(), lastResult: result }).where(eq(s.reportSchedules.id, sc.id));
     await db.insert(s.auditLog).values({ entity: "report_schedule", entityId: sc.id, action: "RUN", after: { result }, actorId: "scheduler" });

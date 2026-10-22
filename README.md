@@ -89,6 +89,16 @@ Canlıda `DEMO_LOGINS=0` ile sunum kartları gizlenir; sunum hesapları **Kullan
 
 Müşteri akışı: `/kayit` (cari + yetkili, KVKK) → gemi ekle → fiyat hesapla → sepet → fatura muhatabı → hizmet sözleşmesi ve ödeme taahhüdü onayı (bir kez) → beyanname onayı (her talepte) → gönderim → talepname/taahhütname onayı. İstenen zaman asgari bildirim süresinden (varsayılan 6 saat, **Ayarlar**dan değişir) yakınsa portal talebi reddeder.
 
+## Bildirimler, e-posta ve SMS
+Olaylar (yeni talep, muhatap onayı bekleniyor/verildi, talep kabul/ret/eksik bilgi, iş tamamlandı, tahakkuk bekliyor, yeni görev, müşteri kaydı) önce sağ üstteki zile (sistem içi bildirim kutusu) yazılır; kullanıcının tercihine göre e-posta/SMS kuyruğa alınır (**Sistem → E-posta ve SMS**). Altyapı tanımlı değilse iletiler kaybolmaz, "Altyapı yok" durumunda bekler ve yapılandırmadan sonra tek tuşla yeniden gönderilir. Zamanlanmış raporlar da aynı kuyruktan Excel ekiyle gider.
+
+```
+SMTP_HOST=… SMTP_PORT=587 SMTP_USER=… SMTP_PASS=… SMTP_FROM="Yalova Pilotaj · PILOTIS <bildirim@…>"   # veya SMTP_URL=smtp://…
+APP_URL=https://pilotis.yalovapilotaj.com      # e-postadaki bağlantılar için
+SMS_WEBHOOK_URL=… SMS_TOKEN=…                  # {to, text} JSON alan SMS köprüsü (isteğe bağlı)
+```
+Şifremi unuttum: tek kullanımlık, 30 dakikalık bağlantı (yalnız özeti saklanır). Sunum modunda ve SMTP yokken bağlantı ekranda gösterilir; canlıda `DEMO_LOGINS=0`. Geçici şifreyle giren kullanıcı şifresini değiştirmeden başka ekrana geçemez. Müşteri firma yetkilisi kendi firmasına kullanıcı davet eder (şifre e-postayla gönderilmez; 72 saatlik etkinleştirme bağlantısı).
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

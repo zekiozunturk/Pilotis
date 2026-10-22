@@ -1,6 +1,5 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { currentScope, currentUser } from "@/lib/session";
@@ -100,7 +99,7 @@ export async function estimatePackages(_: PortalState, f: FormData): Promise<Por
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }
 
-export type SimpleState = { ok: boolean; message: string } | null;
+export type SimpleState = { ok: boolean; message: string; redirectTo?: string } | null;
 
 export async function addToCart(_: SimpleState, f: FormData): Promise<SimpleState> {
   try {
@@ -181,7 +180,7 @@ export async function submitCart(_: SimpleState, f: FormData): Promise<SimpleSta
     for (const it of items) {
       if (it.operationId) continue; // tekrar gönderimde çoğaltma yok
       await db.update(s.cartItems).set({ declarationSignedBy: signed }).where(eq(s.cartItems.id, it.id));
-      const r = await createOperationRecord({ vesselId: it.vesselId, typeCode: it.typeCode, fromFacilityId: it.fromFacilityId, toFacilityId: it.toFacilityId, plannedStart: it.plannedStart, requesterPartyId: partyId, billingPartyId: it.billingPartyId, declaration: it.declaration as Declaration, actor: scope.role, source: `cart:${cart.id}` });
+      const r = await createOperationRecord({ vesselId: it.vesselId, typeCode: it.typeCode, fromFacilityId: it.fromFacilityId, toFacilityId: it.toFacilityId, plannedStart: it.plannedStart, requesterPartyId: partyId, billingPartyId: it.billingPartyId, declaration: it.declaration as Declaration, actor: scope.role, actorUserId: user?.id ?? null, source: `cart:${cart.id}` });
       await db.update(s.cartItems).set({ operationId: r.id }).where(eq(s.cartItems.id, it.id));
       await db.insert(s.auditLog).values({ entity: "operation", entityId: r.ref, action: "DECLARATION_SIGNED", after: signed as object, actorId: user?.username ?? scope.role });
       // Talepname PDF'i hemen üretilir: fatura muhatabı onayı bu sürüme bağlanır
@@ -193,5 +192,6 @@ export async function submitCart(_: SimpleState, f: FormData): Promise<SimpleSta
   } catch (e) { return { ok: false, message: (e as Error).message }; }
   const qs = new URLSearchParams({ gonderildi: refs.join(",") });
   if (!external) qs.set("firma", partyId);
-  redirect(`/portal?${qs}`);
+  revalidatePath("/portal");
+  return { ok: true, message: `${refs.length} talep gönderildi: ${refs.join(", ")}`, redirectTo: `/portal?${qs}` };
 }

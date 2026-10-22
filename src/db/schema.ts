@@ -72,9 +72,50 @@ export const users = pgTable("users", {
   lastLoginAt: ts("last_login_at"),
   mustChangePassword: boolean("must_change_password").default(false).notNull(),
   isDemo: boolean("is_demo").default(false).notNull(),
+  partyAdmin: boolean("party_admin").default(false).notNull(), // müşteri firmasında kullanıcı ekleyebilen yetkili
+  notifyEmail: boolean("notify_email").default(true).notNull(),
+  notifySms: boolean("notify_sms").default(false).notNull(),
   createdAt: createdAt(), updatedAt: updatedAt(),
 });
 
+/** Şifre sıfırlama bağlantıları — tek kullanımlık, 30 dakika; yalnız belirtecin özeti saklanır */
+export const passwordResets = pgTable("password_resets", {
+  id: text("id").primaryKey(),                 // sha256(belirteç)
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+  expiresAt: ts("expires_at").notNull(),
+  usedAt: ts("used_at"),
+  ip: text("ip"),
+});
+
+/** Sistem içi bildirim kutusu */
+export const notifications = pgTable("notifications", {
+  id: id(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),                // REQUEST_NEW, BILLING_PENDING, BILLING_DECIDED, REQUEST_DECIDED, OP_COMPLETED, TASK_ASSIGNED, REGISTRATION, …
+  title: text("title").notNull(),
+  body: text("body"),
+  link: text("link"),
+  createdAt: createdAt(),
+  readAt: ts("read_at"),
+}, (t) => [index("notif_user_idx").on(t.userId, t.createdAt)]);
+
+/** Giden e-posta/SMS kuyruğu — altyapı yoksa kayıt kalır, yapılandırılınca yeniden denenir */
+export const outbox = pgTable("outbox", {
+  id: id(),
+  channel: text("channel").notNull(),          // EMAIL | SMS
+  to: text("to").notNull(),
+  subject: text("subject"),
+  body: text("body").notNull(),
+  attachments: jsonb("attachments"),           // [{ name, storageKey, contentType }]
+  status: text("status").default("QUEUED").notNull(), // QUEUED | SENT | FAILED | NO_CONFIG
+  error: text("error"),
+  attempts: integer("attempts").default(0).notNull(),
+  kind: text("kind"),
+  ref: text("ref"),
+  createdAt: createdAt(),
+  sentAt: ts("sent_at"),
+}, (t) => [index("outbox_status_idx").on(t.status, t.createdAt)]);
 /** Oturumlar — çerezde rastgele belirteç, veritabanında yalnız özeti tutulur */
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),                 // sha256(belirteç)
