@@ -6,9 +6,10 @@ import { KRP_PETKIM_REV4 } from "../data/tariffs/krp-petkim-rev4";
 import { REFERENCE_CASES } from "../data/reference-cases";
 import { TERMS } from "../data/terms";
 import { sql } from "drizzle-orm";
+import { seedDemoPeriod } from "./demo-period";
 
 async function main() {
-  await db.execute(sql`TRUNCATE shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -168,11 +169,12 @@ async function main() {
   const tr = (d: string, h: string) => new Date(`${d}T${h}:00+03:00`);
   const cutoff = new Date("2026-10-22T12:00:00+03:00");
   const rows: (typeof s.shifts.$inferInsert)[] = [];
-  const add = (pid: string, cat: "WORK" | "STANDBY" | "TRAINING" | "LEAVE", a: Date, b: Date, note?: string, assetId?: string | null) => rows.push({ personnelId: pid, category: cat, status: a < cutoff ? "CONFIRMED" : "PLANNED", startAt: a, endAt: b, note, assetId: assetId ?? null, createdBy: "seed", isDemo: true });
-  // Rotasyon vardiyaları (takvime uygula ile aynı üretici) — 05.10–09.11
-  for (const r of rotationShifts(rot, people, tr("2026-10-05", "00:00").getTime(), tr("2026-11-09", "00:00").getTime())) add(r.personnelId, "WORK", new Date(r.start), new Date(r.end), r.note, tugAssets.get(r.tugName));
+  const rowTeam = new Map<(typeof rows)[number], string>();
+  const add = (pid: string, cat: "WORK" | "STANDBY" | "TRAINING" | "LEAVE", a: Date, b: Date, note?: string, assetId?: string | null, origin = "MANUAL") => { const r = { personnelId: pid, category: cat, status: (a < cutoff ? "CONFIRMED" : "PLANNED") as "PLANNED", startAt: a, endAt: b, note, assetId: assetId ?? null, createdBy: "seed", isDemo: true, origin }; rows.push(r); return r; };
+  // Rotasyon vardiyaları (takvime uygula ile aynı üretici) — 31.08–09.11 (analiz için geçmiş dönem dahil)
+  for (const r of rotationShifts(rot, people, tr("2026-08-31", "00:00").getTime(), tr("2026-11-09", "00:00").getTime())) rowTeam.set(add(r.personnelId, "WORK", new Date(r.start), new Date(r.end), r.note, tugAssets.get(r.tugName), "ROTATION"), r.teamKey);
   // Kılavuz kaptan ve kıyı personeli (rotasyon dışı)
-  const days = Array.from({ length: 28 }, (_, i) => new Date(Date.UTC(2026, 9, 12 + i)).toISOString().slice(0, 10));
+  const days = Array.from({ length: 70 }, (_, i) => new Date(Date.UTC(2026, 7, 31 + i)).toISOString().slice(0, 10));
   const next = (d: string) => new Date(new Date(`${d}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
   people.filter((p) => p.crewRole === "KILAVUZ" || p.crewRole === "KIYI_OPS").forEach((p, i) => {
     days.forEach((d, di) => {
@@ -189,6 +191,15 @@ async function main() {
   const y3p = pick("Römork-2", "B", "PIMCI");
   for (const r of rows.filter((r) => r.personnelId === y3p.id && r.startAt >= tr("2026-10-22", "00:00") && r.startAt < tr("2026-10-24", "00:00"))) rows.splice(rows.indexOf(r), 1);
   add(y3p.id, "LEAVE", tr("2026-10-22", "00:00"), tr("2026-10-24", "00:00"), "Yıllık izin");
+  // Örnek dönem: operasyonlar, fiilî katılım, faturalar, tahsilat, maliyet (vardiya gerçekleşenleri burada işlenir)
+  const fleet = await db.select().from(s.fleetAssets);
+  const demo = await seedDemoPeriod({
+    people, rows, rowTeam, now: cutoff, tariffVersionId: DEMO_TARIFF.id,
+    tugs: fleet.filter((f) => f.type === "TUG" && f.code).map((f) => ({ id: f.id, code: f.code!, name: f.name })).sort((a, b) => a.code.localeCompare(b.code, "tr", { numeric: true })),
+    pilotBoats: fleet.filter((f) => f.type === "PILOT_BOAT").map((f) => f.id), mooringBoats: fleet.filter((f) => f.type === "MOORING_BOAT").map((f) => f.id),
+    existing: { agent: agent.id, yard: yard.id, owner: owner.id, yardFac: yardFac.id, base: base.id },
+  });
+  console.log("Örnek dönem:", demo);
   for (let i = 0; i < rows.length; i += 500) await db.insert(s.shifts).values(rows.slice(i, i + 500));
 
   // Terminoloji

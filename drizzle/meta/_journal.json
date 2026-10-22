@@ -50,6 +50,20 @@
       "when": 1792663657882,
       "tag": "0006_romork_kodlari",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792664636693,
+      "tag": "0007_analiz_temeli",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792666547086,
+      "tag": "0008_raporlar",
+      "breakpoints": true
     }
   ]
 }

@@ -43,6 +43,7 @@ export const eventType = pgEnum("event_type", [
   "TASK_ACCEPTED", "TRANSIT_START", "ARRIVED_SITE", "DECLARATION_CHECKED", "PILOT_BOARDED", "TUG_ALONGSIDE",
   "MOORING_START", "SERVICE_START", "PAUSE_START", "PAUSE_END", "SERVICE_END", "PILOT_DISEMBARKED",
   "INCIDENT", "CANCEL_OR_INCOMPLETE",
+  "WAIT_START", "WAIT_END", "RETURN_START", "RETURN_END",
 ]);
 export const assetType = pgEnum("asset_type", [
   "TUG", "PILOT_BOAT", "MOORING_BOAT", "SURFACE_CLEANING_VESSEL", "LAND_VEHICLE", "EQUIPMENT",
@@ -192,6 +193,9 @@ export const operations = pgTable("operations", {
   toFacilityId: text("to_facility_id").references(() => facilities.id),
   requestedAt: ts("requested_at"),
   plannedStart: ts("planned_start"),
+  plannedEnd: ts("planned_end"),
+  /** Normal görev | zorunlu görev (idare talimatı) | acil müdahale */
+  priority: text("priority").default("NORMAL").notNull(),
   isAuthorityTask: boolean("is_authority_task").default(false).notNull(),
   // bağlantılı durum kümeleri
   requestStatus: requestStatus("request_status").default("DRAFT").notNull(),
@@ -534,7 +538,143 @@ export const shifts = pgTable("shifts", {
   createdBy: text("created_by"),
   isDemo: boolean("is_demo").default(false).notNull(),
   createdAt: createdAt(),
+  // Gerçekleşen (fiilî) çalışma — planlanan aralıktan ayrı tutulur; onaysız kayıt "onay bekleyen" sayılır
+  actualStartAt: ts("actual_start_at"),
+  actualEndAt: ts("actual_end_at"),
+  actualSource: text("actual_source"),          // OFFICIAL | MANUAL_CORRECTION | ESTIMATE
+  approvedById: text("approved_by_id"),
+  approvedAt: ts("approved_at"),
+  overtimeReason: text("overtime_reason"),
+  correctionReason: text("correction_reason"),
+  origin: text("origin").default("MANUAL").notNull(), // MANUAL | ROTATION
 }, (t) => [index("shift_person_time_idx").on(t.personnelId, t.startAt)]);
+
+// ───────────── ANALİZ: FİİLÎ KATILIM, ARAÇ DURUMU, FİNANS, MALİYET ─────────────
+/** Operasyona fiilî katılım aralığı (kişi veya araç). Plan = assignments; gerçekleşen = participations. */
+export const participations = pgTable("participations", {
+  id: id(),
+  operationId: text("operation_id").notNull().references(() => operations.id),
+  personnelId: text("personnel_id").references(() => personnel.id),
+  assetId: text("asset_id").references(() => fleetAssets.id),
+  roleOnTask: text("role_on_task"),
+  from: ts("from").notNull(),
+  to: ts("to").notNull(),
+  source: text("source").default("OFFICIAL").notNull(), // OFFICIAL | MANUAL_CORRECTION | ESTIMATE
+  approved: boolean("approved").default(false).notNull(),
+  note: text("note"),
+}, (t) => [index("part_op_idx").on(t.operationId), index("part_person_idx").on(t.personnelId, t.from), index("part_asset_idx").on(t.assetId, t.from)]);
+
+/** Aracın kullanılamadığı süreler (bakım, arıza, belge) */
+export const assetDowntime = pgTable("asset_downtime", {
+  id: id(),
+  assetId: text("asset_id").notNull().references(() => fleetAssets.id),
+  kind: text("kind").notNull(), // PLANNED_MAINTENANCE | BREAKDOWN | CERTIFICATE | OTHER
+  from: ts("from").notNull(),
+  to: ts("to").notNull(),
+  note: text("note"),
+  createdBy: text("created_by"),
+});
+
+/** Günlük motor saati ve yakıt — ölçülen ve tahmini ayrı işaretlenir */
+export const assetMeters = pgTable("asset_meters", {
+  id: id(),
+  assetId: text("asset_id").notNull().references(() => fleetAssets.id),
+  day: text("day").notNull(),               // YYYY-MM-DD (TR)
+  engineHours: numeric("engine_hours", { precision: 6, scale: 1 }),
+  fuelLiters: numeric("fuel_liters", { precision: 9, scale: 1 }),
+  fuelMeasured: boolean("fuel_measured").default(false).notNull(),
+}, (t) => [uniqueIndex("meter_asset_day_uq").on(t.assetId, t.day)]);
+
+/** Fatura / iade faturası — muhasebe sisteminden (ETA) aktarılır; fatura TL kesilir */
+export const invoices = pgTable("invoices", {
+  id: id(),
+  number: text("number").notNull().unique(),
+  kind: text("kind").default("INVOICE").notNull(), // INVOICE | CREDIT_NOTE
+  partyId: text("party_id").notNull().references(() => parties.id),
+  issueDate: text("issue_date").notNull(),         // YYYY-MM-DD
+  currency: text("currency").default("TRY").notNull(),
+  netAmount: numeric("net_amount", { precision: 14, scale: 2 }).notNull(),   // iade faturasında negatif
+  taxAmount: numeric("tax_amount", { precision: 14, scale: 2 }).notNull(),
+  status: text("status").default("ISSUED").notNull(), // ISSUED | CANCELLED
+  correctsInvoiceId: text("corrects_invoice_id"),
+  disputedAmount: numeric("disputed_amount", { precision: 14, scale: 2 }).default("0").notNull(),
+  disputeNote: text("dispute_note"),
+  source: text("source").default("MANUAL").notNull(), // ETA_IMPORT | MANUAL | DEMO
+  importBatchId: text("import_batch_id"),
+  createdAt: createdAt(),
+});
+
+export const invoiceLines = pgTable("invoice_lines", {
+  id: id(),
+  invoiceId: text("invoice_id").notNull().references(() => invoices.id),
+  operationId: text("operation_id").references(() => operations.id),
+  calcResultId: text("calc_result_id").references(() => calculationResults.id),
+  serviceKind: text("service_kind"),
+  description: text("description").notNull(),
+  netAmount: numeric("net_amount", { precision: 14, scale: 2 }).notNull(),
+  taxAmount: numeric("tax_amount", { precision: 14, scale: 2 }).notNull(),
+}, (t) => [index("invline_op_idx").on(t.operationId)]);
+
+export const payments = pgTable("payments", {
+  id: id(),
+  partyId: text("party_id").notNull().references(() => parties.id),
+  receivedDate: text("received_date").notNull(),
+  currency: text("currency").default("TRY").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  reference: text("reference"),
+  source: text("source").default("MANUAL").notNull(),
+  importBatchId: text("import_batch_id"),
+});
+
+/** Tahsilat yalnız fatura eşleşmesiyle operasyona bağlanır */
+export const paymentMatches = pgTable("payment_matches", {
+  id: id(),
+  paymentId: text("payment_id").notNull().references(() => payments.id),
+  invoiceId: text("invoice_id").notNull().references(() => invoices.id),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+});
+
+/** Maliyet kayıtları: gerçekleşen / tahmini / dağıtılmış ayrı işaretlenir */
+export const costEntries = pgTable("cost_entries", {
+  id: id(),
+  day: text("day").notNull(),            // YYYY-MM-DD
+  category: text("category").notNull(),  // PERSONNEL | OVERTIME | FUEL | SUBCONTRACT | OP_SPECIFIC | MAINTENANCE | OVERHEAD
+  nature: text("nature").notNull(),      // ACTUAL | ESTIMATE | ALLOCATED
+  currency: text("currency").default("TRY").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  operationId: text("operation_id").references(() => operations.id),
+  assetId: text("asset_id").references(() => fleetAssets.id),
+  teamKey: text("team_key"),
+  description: text("description"),
+  allocationBasis: text("allocation_basis"),
+  source: text("source").default("MANUAL").notNull(),
+  importBatchId: text("import_batch_id"),
+});
+
+/** Gerekçeli, yetkili onaylı elle gelir dağıtımı (doğrudan/süre/ağırlık yöntemlerinin yerine geçer) */
+export const manualAllocations = pgTable("manual_allocations", {
+  id: id(),
+  invoiceLineId: text("invoice_line_id").notNull().references(() => invoiceLines.id),
+  targetType: text("target_type").notNull(), // ASSET | PERSONNEL
+  targetId: text("target_id").notNull(),
+  sharePct: numeric("share_pct", { precision: 7, scale: 4 }).notNull(),
+  reason: text("reason").notNull(),
+  approvedBy: text("approved_by").notNull(),
+  version: integer("version").default(1).notNull(),
+  createdAt: createdAt(),
+});
+
+/** Plan–gerçekleşen sapma nedeni. Neden ve sorumluluk ayrı tutulur; sistem kimseyi otomatik sorumlu ilan etmez. */
+export const deviations = pgTable("deviations", {
+  id: id(),
+  operationId: text("operation_id").notNull().references(() => operations.id),
+  category: text("category").notNull(), // CUSTOMER_PREP | FACILITY_PREP | WEATHER | TECH_FAILURE | EMERGENCY_TASK | PLAN_CHANGE | DECLARATION_CHANGE | MISSING_INFO | OTHER
+  minutes: integer("minutes"),
+  note: text("note"),
+  responsibilityNote: text("responsibility_note"),
+  recordedBy: text("recorded_by"),
+  recordedAt: createdAt(),
+});
 
 // ───────────── TERMİNOLOJİ ─────────────
 /** Merkezî terim sözlüğü — numara değişmez; çeviriler insan onayı olmadan bağlayıcı değildir. */
@@ -550,4 +690,37 @@ export const terms = pgTable("terms", {
   status: text("status").default("TASLAK").notNull(),
   version: integer("version").default(1).notNull(),
   updatedAt: updatedAt(),
+});
+
+// ───────────── RAPORLAR ─────────────
+/** Rapor şablonu (düzen+alanlar), kayıtlı görünüm (filtre+kolon+sıralama), sabit nüsha (değişmez çıktı) ayrı türlerdir */
+export const reports = pgTable("reports", {
+  id: id(),
+  kind: text("kind").notNull(),              // TEMPLATE | VIEW | SNAPSHOT
+  name: text("name").notNull(),
+  scope: text("scope").default("PERSONAL").notNull(), // PERSONAL | TEAM | CORPORATE
+  owner: text("owner").notNull(),            // kullanıcı (geliştirmede rol)
+  ownerRole: text("owner_role").notNull(),
+  definition: jsonb("definition").notNull(), // ReportDef
+  filters: text("filters"),                  // URL sorgu dizesi
+  snapshot: jsonb("snapshot"),               // SNAPSHOT: üretilen satırlar + meta (değişmez)
+  sourceId: text("source_id"),               // kopya / nüsha kaynağı
+  version: integer("version").default(1).notNull(),
+  createdAt: createdAt(), updatedAt: updatedAt(),
+});
+
+export const reportSchedules = pgTable("report_schedules", {
+  id: id(),
+  reportId: text("report_id").notNull().references(() => reports.id),
+  frequency: text("frequency").notNull(),    // DAILY | WEEKLY | MONTHLY
+  at: text("at").notNull(),                  // HH:MM (TR)
+  weekday: integer("weekday"),
+  recipients: jsonb("recipients").notNull(), // [{ email, role }]
+  format: text("format").notNull(),          // XLSX | PDF
+  dataScope: text("data_scope").notNull(),   // ör. "Son 7 gün", "Geçen ay"
+  active: boolean("active").default(true).notNull(),
+  lastRunAt: ts("last_run_at"),
+  lastResult: text("last_result"),
+  createdBy: text("created_by").notNull(),
+  createdAt: createdAt(),
 });

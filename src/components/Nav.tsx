@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 const GROUPS: { title: string; items: [string, string, string][] }[] = [
   { title: "Operasyon", items: [["/", "◎", "Kokpit"], ["/operasyonlar", "⚓", "Operasyonlar"], ["/operasyonlar/yeni", "+", "Yeni talep (masa)"], ["/portal", "▣", "Müşteri portalı"], ["/planlama", "▦", "Planlama"], ["/planlama/rotasyon", "↻", "Ekip rotasyonu"]] },
+  { title: "Analiz", items: [["/analiz", "◔", "Performans & analiz"]] },
   { title: "Kayıtlar", items: [["/gemiler", "▲", "Gemiler"], ["/taraflar", "◇", "Taraflar & tesisler"], ["/filo", "⛴", "Filo"], ["/personel", "●", "Personel"]] },
   { title: "Kural & Tarife", items: [["/katalog", "≡", "Hizmet kataloğu"], ["/tarife", "∑", "Tarife & fiyat listesi"], ["/kurlar", "₺", "Döviz kurları"], ["/kurallar", "§", "Mevzuat / kurallar"], ["/acik-konular", "!", "Açık konular"]] },
   { title: "Sistem", items: [["/terminoloji", "Aa", "Terminoloji"], ["/ayarlar", "⚙", "Ayarlar"]] },
