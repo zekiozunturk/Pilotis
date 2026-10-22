@@ -48,6 +48,6 @@ export async function savePolicy(_: KState, f: FormData): Promise<KState> {
     await db.insert(s.appSettings).values({ key: "fx.policy", value, updatedBy: role }).onConflictDoUpdate({ target: s.appSettings.key, set: { value, updatedBy: role, updatedAt: new Date() } });
     await recordAudit("app_settings", "fx.policy", "UPDATE", value, role, String(f.get("reason") || ""));
     revalidatePath("/", "layout");
-    return { ok: true, message: "Kur politikası güncellendi — sonraki hesaplarda geçerli; kayıtlı hesaplar değişmez", at: new Date().toISOString() };
+    return { ok: true, message: "Kur ayarı güncellendi — sonraki hesaplarda geçerli; kayıtlı hesaplar değişmez", at: new Date().toISOString() };
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }

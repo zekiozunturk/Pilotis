@@ -28,7 +28,8 @@ export default async function Rates() {
         <div className="card">
           <h2>Kur politikası</h2>
           <div style={{ fontSize: 13 }}><b>{RATE_TYPE_LABEL[policy.rateType]}</b> · {DATE_RULE_LABEL[policy.dateRule]}</div>
-          <div className="badge warn" style={{ marginTop: 6 }}>AK-17 · mali müşavir onayı bekleniyor</div>
+          <div className="badge ok" style={{ marginTop: 6 }}>İşletme kararı: TCMB döviz satış</div>
+          <div style={{ fontSize: 12, marginTop: 6 }}><a href="/ayarlar">Ayarlardan değiştir →</a></div>
         </div>
       </div>
       <div className="grid g2" style={{ marginBottom: 16 }}>
@@ -39,7 +40,7 @@ export default async function Rates() {
           <h3>Elle giriş (TCMB'ye erişilemediğinde)</h3>
           <ManualForm />
         </div>
-        <div className="card"><h2>Politika ayarı</h2><PolicyForm rateType={policy.rateType} dateRule={policy.dateRule} /></div>
+        <div className="card"><h2>Kur ayarı</h2><PolicyForm rateType={policy.rateType} dateRule={policy.dateRule} /></div>
       </div>
       <div className="tablewrap">
         <table>

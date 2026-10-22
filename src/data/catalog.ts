@@ -112,7 +112,7 @@ export const OPEN_ISSUES = [
   { code: "AK-13", topic: "RPO/RTO hedefleri", owner: "Yönetim", document: "Karar", target: "Faz 9", module: "Altyapı" },
   { code: "AK-15", topic: "KRP 2026–2027 resmî ücret eki (veya DGM'nin duyurduğu ABD TÜFE oranı) — Petkim Rev.4 aktarımının dönemi ve 7 doğrulama notu", owner: "Tarife sorumlusu", document: "Bakanlık KRP ücret eki (DOCX/PDF) veya DGM duyurusu", target: "Faz 3 kapanışı", module: "Tarife" },
   { code: "AK-16", topic: "2026–2027 dini bayram tarihleri (Diyanet) ve arife yarım gün uygulamasının tarifeye yansıması", owner: "Tarife sorumlusu", document: "Diyanet takvimi / Bakanlık görüşü", target: "Faz 3", module: "Tarife (R-025)" },
-  { code: "AK-17", topic: "Döviz kalemlerin TL'ye çevriminde kur tipi (TCMB döviz satış/alış) ve kur tarihi kuralı (önceki bülten / fatura tarihi) — varsayılan: önceki bülten, döviz satış", owner: "Muhasebe / Mali müşavir", document: "Görüş yazısı", target: "Faz 4", module: "Kur, Tahakkuk" },
+  { code: "AK-17", topic: "Kur tipi: TCMB döviz satış (işletme kararı, 22.10.2026; Ayarlar'dan değiştirilebilir). Açık kalan: kur tarihi kuralı (önceki bülten / fatura tarihi) mali müşavirle teyit", owner: "Muhasebe / Mali müşavir", document: "Görüş yazısı", target: "Faz 4", module: "Kur, Tahakkuk" },
   { code: "AK-14", topic: "Mevcut Yalova Pilot Portal verisi ve 'Manevra Hesaplama' mantığı", owner: "İşletme", document: "Erişim / dışa aktarım", target: "Faz 2", module: "Göç, Hesap" },
 ];
 
