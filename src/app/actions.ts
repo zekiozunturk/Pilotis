@@ -345,8 +345,14 @@ export async function simulateCalc(_: SimState, f: FormData): Promise<SimState> 
       measuredMinutes: minRaw ? Number(minRaw) : null, allocatedUnits: Number(f.get("allocated") || 1), requestedUnits: Number(f.get("requested") || 1),
       extraUnitsWrittenRequest: f.get("written") === "on", conditionCodes: f.getAll("cond").map(String),
       completion: String(f.get("completion")) as CalcInput["completion"], waitingMinutes: Number(f.get("waiting") || 0),
+      tariffCategory: String(f.get("category") || "") || null, bollardPullT: String(f.get("bollard") || "") ? Number(String(f.get("bollard")).replace(",", ".")) : null,
     };
-    const v = pickVersion(await loadTariffs(), input.serviceDate);
+    const all = await loadTariffs();
+    const chosen = String(f.get("versionId") || "");
+    const v = chosen ? all.find((x) => x.id === chosen) : pickVersion(all, input.serviceDate);
+    if (!v) return { ok: false, message: "Tarife sürümü bulunamadı" };
+    const from = new Date(v.validFrom).getTime(), to = new Date(v.validTo).getTime(), d = new Date(input.serviceDate).getTime();
+    if (d < from || d > to) return { ok: false, message: `Hizmet tarihi seçilen sürümün geçerlilik dönemi dışında (${v.validFrom.slice(0, 10)} – ${v.validTo.slice(0, 10)})` };
     return { ok: true, result: calcEngine(input, v, await ruleStatusMap()) };
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }

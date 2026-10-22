@@ -53,7 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <main className="main">
               {children}
               <div className="footer">
-                <span><b>PILOTIS</b> v0.1 · Faz 0–1 · {BRAND.slogan}</span>
+                <span><b>PILOTIS</b> v0.3 · Faz 3 · {BRAND.slogan}</span>
                 <span>Zamanlar Europe/Istanbul gösterilir, UTC saklanır.</span>
               </div>
             </main>

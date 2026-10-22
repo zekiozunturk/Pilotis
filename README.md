@@ -42,6 +42,23 @@ npm run dev                     # http://localhost:3000
 
 Testler: `npm test` → 41 birim testi. Uçtan uca tarayıcı senaryoları sepet, belge, onay, yeniden onay, ıslak imza ve başka müşteri erişimini doğrular.
 
+## Faz 3 durumu
+| Teslimat | Durum |
+|---|---|
+| Kaynaklı KRP tablosu (Petkim ABU-TRO-LST-0141 Rev.4, UAB Oluru 2187670'e dayanır): 4 gemi kategorisi × kılavuzluk/römorkör/palamar, 120.000 GT tavanı, çeki gücüne göre standby, 7 artırım/indirim | ✓ statü: Kaynak bulundu |
+| Motor: kategori seçimi + gerekçe (kabotaj/liner/gemi tipi), kategori bazlı oran kapsamı (TR bayrak indirimi kabotajda yok), bayram takvimi (Europe/Istanbul, arife 13:00), standby'da yalnız doğrulanmış çeki gücü | ✓ |
+| Doğrulama notları: çözülmeyen not varsa sürüm onaylanamaz, hesap üretime geçmez | ✓ |
+| Referans test seti: 18 elle hesaplanmış vaka (3'ü kaynak tablo satırı) — veritabanında, sürüm sayfasında canlı koşulur | ✓ 18/18 |
+| Tarife iş akışı: Taslak/Kaynak → Uzman incelemesi → Onay → Yürürlük → Kaldırma; görev ayrılığı, dönem çakışma kontrolü, örnek sürümün otomatik kaldırılması | ✓ |
+| Endeksle türetme (Yönerge md.5(1)(b), ABD TÜFE; negatifse ücret değişmez; oranlar endekslenmez) | ✓ |
+| Taslak düzenleme: iyimser kilit (rev), hücre bazlı denetim kaydı, kaydedilmemiş değişiklik uyarısı | ✓ |
+| Sürüm karşılaştırma: değişen hücreler + 7 GT noktasında kategori bazlı tutar matrisi | ✓ |
+| Kural kataloğu statü yönetimi (kaynak ve kontrol eden zorunlu) | ✓ |
+
+Testler: `npm test` → 85 birim/referans testi.
+
+**2026–2027 tarifesi için gereken tek veri:** Bakanlık ücret eki ya da DGM'nin duyurduğu ABD TÜFE oranı (AK-15). Oran girilince sistem 2026–2027 taslağını türetir; vakalar eklenir, notlar çözülür, onaylanıp yürürlüğe alınır.
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

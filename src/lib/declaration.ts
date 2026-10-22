@@ -9,6 +9,8 @@ export interface Declaration {
   unNumber?: string | null;
   gasFreeCert?: boolean | null;
   draft?: number | null;
+  isCabotage?: boolean | null;     // sefer niteliği — tarife kategorisini belirler
+  isLinerService?: boolean | null; // düzenli hat (liner) seferi
   note?: string | null;
 }
 
@@ -22,6 +24,8 @@ export const DECL_FIELDS: { key: keyof Declaration; label: string; critical: boo
   { key: "unNumber", label: "UN numarası", critical: true, affects: ["Risk değerlendirmesi"] },
   { key: "gasFreeCert", label: "Gas-free belgesi", critical: true, affects: ["Tanker kuralları (R-014)", "Gerekli belgeler"] },
   { key: "draft", label: "Su çekimi", critical: false, affects: ["Planlama"] },
+  { key: "isCabotage", label: "Kabotaj seferi", critical: true, affects: ["Tarife kategorisi / fiyat", "Fatura muhatabı onayı"] },
+  { key: "isLinerService", label: "Liner (düzenli hat) seferi", critical: true, affects: ["Tarife kategorisi / fiyat", "Fatura muhatabı onayı"] },
 ];
 
 export interface FieldChange { key: string; label: string; from: unknown; to: unknown; critical: boolean; affects: string[] }

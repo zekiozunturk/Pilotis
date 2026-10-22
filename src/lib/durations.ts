@@ -5,7 +5,7 @@
  *  3) Bildirilecek süre — LYBS alan tanımı doğrulanınca (AK-07)
  * R-001: Başlangıç olayı hizmet türüne göre farklıdır.
  */
-export type ServiceKindT = "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING";
+export type ServiceKindT = "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING" | "STANDBY_TUG";
 
 export interface Ev {
   type: string;
@@ -21,12 +21,14 @@ export const START_EVENT: Record<ServiceKindT, string> = {
   TOWAGE: "TUG_ALONGSIDE",
   MOORING: "MOORING_START",
   UNMOORING: "MOORING_START",
+  STANDBY_TUG: "TUG_ALONGSIDE",
 };
 export const END_EVENT: Record<ServiceKindT, string> = {
   PILOTAGE: "PILOT_DISEMBARKED",
   TOWAGE: "SERVICE_END",
   MOORING: "SERVICE_END",
   UNMOORING: "SERVICE_END",
+  STANDBY_TUG: "SERVICE_END",
 };
 
 export interface ActualDuration {

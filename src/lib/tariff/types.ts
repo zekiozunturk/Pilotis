@@ -1,5 +1,5 @@
 export type ServiceKind =
-  | "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING" | "LINE_HANDLING" | "CHARTER" | "SALVAGE_REVIEW" | "SPECIAL";
+  | "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING" | "LINE_HANDLING" | "CHARTER" | "SALVAGE_REVIEW" | "SPECIAL" | "STANDBY_TUG";
 
 export type RuleStatus = "DRAFT" | "SOURCE_FOUND" | "EXPERT_REVIEW" | "APPROVED" | "IN_FORCE" | "REPEALED";
 
@@ -19,9 +19,16 @@ export interface HourRounding {
   minimumHours: number;
 }
 
+/** Çeki gücü (ton) aralığı — standby römorkör gibi GT'den bağımsız hizmetler */
+export interface BollardBand { fromT: number; toT: number | null; rate: string }
+
 export interface ServiceTariff {
   unit: "EVENT" | "HOUR";
+  pricing?: "GT_BANDS" | "BOLLARD_PULL";
   bands: GtBand[];
+  bollardBands?: BollardBand[];
+  gtCap?: number;            // ör. 120.000 GT üstü için 120.000 GT ücreti
+  note?: string;
   rounding?: HourRounding;   // unit=HOUR ise zorunlu
   ruleCodes: string[];
 }
@@ -33,10 +40,22 @@ export interface Adjustment {
   rate: string;             // 0.50 = %50
   appliesTo: ServiceKind[];
   ruleCode: string;
+  onlyCategories?: string[];
+  excludeCategories?: string[];
 }
 
+export interface TariffCategory { label: string; services: Partial<Record<ServiceKind, ServiceTariff>> }
+
+export interface VerificationNote { id: string; text: string; resolved: boolean; resolution?: string }
+
 export interface TariffDefinition {
+  /** Kategorisiz (tek sütunlu) tarifeler için */
   services: Partial<Record<ServiceKind, ServiceTariff>>;
+  /** Kategorili tarifeler: KABOTAJ, YOLCU_RORO, LINER_KONTEYNER, DIGER_YUK ... */
+  categories?: Record<string, TariffCategory>;
+  /** Çözülmemiş not = sürüm onaylanamaz, hesap üretime geçemez */
+  verificationNotes?: VerificationNote[];
+  source?: { title: string; docNo?: string; url?: string; publishedAt?: string; note?: string };
   adjustments: Adjustment[];
   moneyScale: number;       // nihai yuvarlama hanesi
 }
@@ -70,6 +89,10 @@ export interface CalcInput {
   conditionCodes: string[];     // NO_ENGINE, REPAIR_YARD ...
   completion: Completion;
   waitingMinutes?: number;      // kaydedilir, ücretlendirilmez (R-003)
+  tariffCategory?: string | null;      // kategorili tarifelerde zorunlu
+  categoryReason?: string | null;      // kategori neden seçildi
+  categoryAssumed?: boolean;           // varsayıma dayanıyorsa üretime geçmez
+  bollardPullT?: number | null;        // standby römorkör için
 }
 
 export interface RuleTrace {

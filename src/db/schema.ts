@@ -37,7 +37,7 @@ export const notifyStatus = pgEnum("notify_status", ["PREPARING", "READY", "AWAI
 export const billingDecision = pgEnum("billing_decision", ["PENDING", "APPROVED", "REJECTED"]);
 export const declarationLayer = pgEnum("declaration_layer", ["CUSTOMER_DECLARED", "FIELD_VERIFIED", "APPROVED_FINAL"]);
 export const serviceKind = pgEnum("service_kind", [
-  "PILOTAGE", "TOWAGE", "MOORING", "UNMOORING", "LINE_HANDLING", "CHARTER", "SALVAGE_REVIEW", "SPECIAL",
+  "PILOTAGE", "TOWAGE", "MOORING", "UNMOORING", "LINE_HANDLING", "CHARTER", "SALVAGE_REVIEW", "SPECIAL", "STANDBY_TUG",
 ]);
 export const eventType = pgEnum("event_type", [
   "TASK_ACCEPTED", "TRANSIT_START", "ARRIVED_SITE", "DECLARATION_CHECKED", "PILOT_BOARDED", "TUG_ALONGSIDE",
@@ -158,6 +158,7 @@ export const portCalls = pgTable("port_calls", {
   dgClass: text("dg_class"),
   unNumber: text("un_number"),
   gasFreeCertAt: ts("gas_free_cert_at"),
+  isLinerService: boolean("is_liner_service"),
   repairPurpose: text("repair_purpose"),
   eta: ts("eta"),
   etd: ts("etd"),
@@ -370,7 +371,32 @@ export const tariffVersions = pgTable("tariff_versions", {
   approvedBy: text("approved_by"),
   approvedAt: ts("approved_at"),
   isDemo: boolean("is_demo").default(false).notNull(),
+  parentVersionId: text("parent_version_id"),
+  preparedBy: text("prepared_by"),
+  submittedBy: text("submitted_by"),
+  submittedAt: ts("submitted_at"),
+  publishedBy: text("published_by"),
+  publishedAt: ts("published_at"),
+  changeNote: text("change_note"),
+  rev: integer("rev").default(1).notNull(), // eşzamanlı düzenleme koruması
+  createdAt: createdAt(),
 });
+
+export const refCaseSource = pgEnum("ref_case_source", ["INDEPENDENT_MANUAL", "OFFICIAL_EXAMPLE", "HISTORICAL_JOB"]);
+
+/** Referans hesap vakaları: beklenen tutar bağımsız kaynaktan; motor çıktısından türetilemez. */
+export const referenceCases = pgTable("reference_cases", {
+  id: id(),
+  code: text("code").notNull(),
+  title: text("title").notNull(),
+  tariffVersionId: text("tariff_version_id").notNull().references(() => tariffVersions.id),
+  source: refCaseSource("source").notNull(),
+  input: jsonb("input").notNull(),
+  expected: numeric("expected", { precision: 14, scale: 2 }).notNull(),
+  working: text("working").notNull(),
+  preparedBy: text("prepared_by"),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("ref_case_ver_code_uq").on(t.tariffVersionId, t.code)]);
 
 export const calculationResults = pgTable("calculation_results", {
   id: id(),

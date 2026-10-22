@@ -35,7 +35,7 @@ export const FLEET_SEED = [
   { name: "Deniz Yüzeyi Temizleme Teknesi", type: "SURFACE_CLEANING_VESSEL", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/03/MY-ECO.png", sourceUrl: "https://www.yalovapilotaj.com/filo/deniz-yuzeyi-temizleme-teknemiz/" },
 ] as const;
 
-type SK = "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING" | "LINE_HANDLING" | "CHARTER" | "SALVAGE_REVIEW" | "SPECIAL";
+type SK = "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING" | "LINE_HANDLING" | "CHARTER" | "SALVAGE_REVIEW" | "SPECIAL" | "STANDBY_TUG";
 export const OPERATION_TYPES: { code: string; nameTr: string; nameEn: string; kinds: SK[]; families: string[]; unit: string }[] = [
   { code: "OP-001", nameTr: "Yanaşma", nameEn: "Berthing", kinds: ["PILOTAGE", "TOWAGE", "MOORING"], families: ["MINISTRY"], unit: "Manevra" },
   { code: "OP-002", nameTr: "Kalkış / ayrılma", nameEn: "Unberthing", kinds: ["PILOTAGE", "TOWAGE", "UNMOORING"], families: ["MINISTRY"], unit: "Manevra" },
@@ -48,7 +48,7 @@ export const OPERATION_TYPES: { code: string; nameTr: string; nameEn: string; ki
   { code: "OP-009", nameTr: "Demirden kaldırma", nameEn: "Heaving anchor", kinds: ["PILOTAGE"], families: ["MINISTRY"], unit: "Manevra" },
   { code: "OP-010", nameTr: "Kendinden hareket edemeyen geminin çekilmesi", nameEn: "Dead-ship tow", kinds: ["TOWAGE", "PILOTAGE"], families: ["MINISTRY"], unit: "Saat" },
   { code: "OP-011", nameTr: "Refakat", nameEn: "Escort", kinds: ["TOWAGE"], families: ["MINISTRY"], unit: "Saat" },
-  { code: "OP-012", nameTr: "Emniyet amacıyla hazır bekleme", nameEn: "Safety standby", kinds: ["TOWAGE"], families: ["MINISTRY", "CHARTER"], unit: "Saat" },
+  { code: "OP-012", nameTr: "Emniyet amacıyla hazır bekleme", nameEn: "Safety standby", kinds: ["STANDBY_TUG"], families: ["MINISTRY", "CHARTER"], unit: "Saat" },
   { code: "OP-013", nameTr: "Ağır hava nedeniyle müdahale", nameEn: "Heavy weather assistance", kinds: ["TOWAGE"], families: ["MINISTRY", "KEGM"], unit: "Saat" },
   { code: "OP-014", nameTr: "Sürüklenen / kontrolünü kaybetmiş gemiye müdahale", nameEn: "Drifting vessel response", kinds: ["TOWAGE", "SALVAGE_REVIEW"], families: ["KEGM", "SALVAGE"], unit: "Saat" },
   { code: "OP-015", nameTr: "Yetkili makam görevlendirmesi", nameEn: "Authority-ordered task", kinds: ["TOWAGE"], families: ["KEGM"], unit: "Saat" },
@@ -81,6 +81,14 @@ export const RULES: { code: string; title: string; label: "REGULATION" | "CONTRA
   { code: "R-017", title: "Kan grubu sağlık verisidir; kısıtlı erişim", label: "REGULATION", status: "APPROVED", basis: "KVKK md. 6", modules: ["Personel", "Yetki"] },
   { code: "R-018", title: "Talep eden taraf otomatik fatura muhatabı değildir", label: "OPERATING_PRACTICE", status: "APPROVED", basis: "PILOTIS şartnamesi §3", modules: ["Taraflar", "Talep"] },
   { code: "R-019", title: "Tahsis edilen ≠ ücretlendirilebilir römorkör sayısı", label: "OPERATING_PRACTICE", status: "APPROVED", basis: "PILOTIS şartnamesi §9 + R-004", modules: ["Planlama", "Hesap"] },
+  { code: "R-021", title: "Römorkör ücretinin esası: manevra başına / süreye bağlı", label: "REGULATION", status: "DRAFT", basis: "KRP Yönergesi eki — doğrulanacak (VN-04)", modules: ["Hesap"] },
+  { code: "R-022", title: "Yeterli thruster'lı gemide 1 römorkör eksik kullanım (DG tanker ve 200 m+ hariç)", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4 (KRP Yönergesi'ne dayanır)", modules: ["Römorkör kararı"] },
+  { code: "R-023", title: "120.000 GT üzeri gemilere 120.000 GT ücreti", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4", modules: ["Hesap"] },
+  { code: "R-024", title: "Tehlikeli yük artırımı: konteyner/Ro-Ro/Ro-Pax %20, diğer %30", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4", modules: ["Hesap"] },
+  { code: "R-025", title: "Ulusal bayram ve genel tatil günleri %50 artırım (2429 s. Kanun)", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4; 2429 s. Kanun", modules: ["Hesap"] },
+  { code: "R-026", title: "Kılavuz/römorkör alma zorunluluğuna uyulmaması %100 artırım", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4", modules: ["Hesap"] },
+  { code: "R-027", title: "Türk bayraklı gemiye %20 indirim (kabotaj sütunu hariç)", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4", modules: ["Hesap"] },
+  { code: "R-028", title: "Ücretler USD; her yıl 1 Şubat'tan itibaren ABD TÜFE oranında güncellenir; negatifse önceki ücret", label: "REGULATION", status: "SOURCE_FOUND", basis: "KRP Yönergesi md. 5(1)(b)", modules: ["Tarife"] },
   { code: "R-020", title: "Dinlenme kontrolü kayan zaman penceresiyle", label: "INTL_GOOD_PRACTICE", status: "EXPERT_REVIEW", basis: "STCW A-VIII/1 (uygulanabilirlik doğrulanacak)", modules: ["Personel", "Planlama"] },
 ];
 
@@ -98,6 +106,8 @@ export const OPEN_ISSUES = [
   { code: "AK-11", topic: "Tersane/kıyı tesisleri doğrulanmış listesi ve koordinatları", owner: "Operasyon", document: "Tesis listesi", target: "Faz 2", module: "Taraflar" },
   { code: "AK-12", topic: "Hizmet bazlı KDV/istisna eşlemesi", owner: "Muhasebe / Mali müşavir", document: "Görüş yazısı", target: "Faz 6", module: "Tahakkuk" },
   { code: "AK-13", topic: "RPO/RTO hedefleri", owner: "Yönetim", document: "Karar", target: "Faz 9", module: "Altyapı" },
+  { code: "AK-15", topic: "KRP 2026–2027 resmî ücret eki (veya DGM'nin duyurduğu ABD TÜFE oranı) — Petkim Rev.4 aktarımının dönemi ve 7 doğrulama notu", owner: "Tarife sorumlusu", document: "Bakanlık KRP ücret eki (DOCX/PDF) veya DGM duyurusu", target: "Faz 3 kapanışı", module: "Tarife" },
+  { code: "AK-16", topic: "2026–2027 dini bayram tarihleri (Diyanet) ve arife yarım gün uygulamasının tarifeye yansıması", owner: "Tarife sorumlusu", document: "Diyanet takvimi / Bakanlık görüşü", target: "Faz 3", module: "Tarife (R-025)" },
   { code: "AK-14", topic: "Mevcut Yalova Pilot Portal verisi ve 'Manevra Hesaplama' mantığı", owner: "İşletme", document: "Erişim / dışa aktarım", target: "Faz 2", module: "Göç, Hesap" },
 ];
 
@@ -154,7 +164,7 @@ export const ASSET_LABELS: Record<string, string> = {
   TUG: "Römorkör", PILOT_BOAT: "Kılavuz botu", MOORING_BOAT: "Palamar botu", SURFACE_CLEANING_VESSEL: "Deniz yüzeyi temizleme", LAND_VEHICLE: "Kara aracı", EQUIPMENT: "Ekipman",
 };
 export const SERVICE_LABELS: Record<string, string> = {
-  PILOTAGE: "Kılavuzluk", TOWAGE: "Römorkörcülük", MOORING: "Palamar bağlama", UNMOORING: "Palamar çözme", LINE_HANDLING: "Halat", CHARTER: "Kiralama", SALVAGE_REVIEW: "Kurtarma değ.", SPECIAL: "Özel hizmet",
+  PILOTAGE: "Kılavuzluk", TOWAGE: "Römorkörcülük", MOORING: "Palamar bağlama", UNMOORING: "Palamar çözme", LINE_HANDLING: "Halat", CHARTER: "Kiralama", SALVAGE_REVIEW: "Kurtarma değ.", SPECIAL: "Özel hizmet", STANDBY_TUG: "Standby römorkör",
 };
 
 /** Portal paket kartları — kapsam metinleri işletme onayına tabidir (AK-04). */

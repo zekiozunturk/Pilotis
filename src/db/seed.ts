@@ -1,10 +1,12 @@
 import "dotenv/config";
 import { db, schema as s } from "./index";
 import { FLEET_SEED, OPERATION_TYPES, RULES, OPEN_ISSUES, OPERATOR, DEMO_TARIFF } from "../data/catalog";
+import { KRP_PETKIM_REV4 } from "../data/tariffs/krp-petkim-rev4";
+import { REFERENCE_CASES } from "../data/reference-cases";
 import { sql } from "drizzle-orm";
 
 async function main() {
-  await db.execute(sql`TRUNCATE calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -54,7 +56,17 @@ async function main() {
     id: DEMO_TARIFF.id, familyId: fam.id, label: DEMO_TARIFF.label, validFrom: new Date(DEMO_TARIFF.validFrom),
     validTo: new Date(DEMO_TARIFF.validTo), currency: DEMO_TARIFF.currency, status: DEMO_TARIFF.status,
     definition: DEMO_TARIFF.definition, sourceRuleCodes: ["R-005", "R-006", "R-009", "R-015"], isDemo: true,
+    preparedBy: "seed", changeNote: "Motor davranışını göstermek için örnek yapı — resmî rakam değildir",
   });
+  await db.insert(s.tariffVersions).values({
+    id: KRP_PETKIM_REV4.id, familyId: fam.id, label: KRP_PETKIM_REV4.label, validFrom: new Date(KRP_PETKIM_REV4.validFrom),
+    validTo: new Date(KRP_PETKIM_REV4.validTo), currency: "USD", status: "SOURCE_FOUND", definition: KRP_PETKIM_REV4.definition,
+    sourceRuleCodes: ["R-005", "R-009", "R-023", "R-024", "R-025", "R-026", "R-027", "R-028"], preparedBy: "TARIFF_OFFICER",
+    changeNote: "Petkim ABU-TRO-LST-0141 Rev.4 (31.12.2025) tablolarından aynen aktarıldı",
+  });
+  await db.insert(s.referenceCases).values(REFERENCE_CASES.map((r) => ({
+    code: r.code, title: r.title, tariffVersionId: r.versionId, source: r.source, input: r.input, expected: r.expected, working: r.working, preparedBy: "TARIFF_OFFICER",
+  })));
   for (const [kind, name] of [["KEGM", "Kıyı Emniyeti hizmet tarifesi"], ["CHARTER", "Deniz aracı kiralama"], ["SALVAGE", "Kurtarma-yardım değerlendirmesi"], ["SPECIAL_CONTRACT", "Özel hizmet sözleşmeleri"]] as const) {
     await db.insert(s.tariffFamilies).values({ kind, name });
   }

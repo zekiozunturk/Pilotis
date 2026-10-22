@@ -3,6 +3,8 @@ import { db, schema as s } from "@/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { calculate, selectTariffVersion } from "./tariff/engine";
 import { actualDuration, type ServiceKindT } from "./durations";
+import { categorize, isContainerOrRoro } from "./tariff/category";
+import { holidayAt } from "@/data/holidays";
 import type { CalcInput, CalcResult, Completion, TariffVersionInput } from "./tariff/types";
 
 export async function nextOperationRef(year = new Date().getUTCFullYear()): Promise<string> {
@@ -76,31 +78,48 @@ export async function computeOperation(o: LoadedOperation, mode: "actual" | "est
   const serviceDate = ((mode === "estimate" ? o.op.plannedStart : firstStart ?? o.op.plannedStart) ?? new Date()).toISOString();
   let version: TariffVersionInput;
   try { version = selectTariffVersion(tariffs, serviceDate); } catch (e) { return { results: [], error: (e as Error).message }; }
+  // Sefer niteliği: son beyan katmanı > liman uğrağı kaydı
+  const lastDecl = (o.requests.at(-1)?.payload ?? {}) as { isCabotage?: boolean | null; isLinerService?: boolean | null; dgClass?: string | null };
+  const isCabotage = lastDecl.isCabotage ?? o.portCall.isCabotage ?? null;
+  const dgClass = lastDecl.dgClass ?? o.portCall.dgClass ?? null;
+  const category = categorize({ vesselType: o.vessel.vesselType, isCabotage, isLinerService: lastDecl.isLinerService ?? o.portCall.isLinerService ?? null });
   const conds: string[] = [];
-  if (o.portCall.isCabotage) conds.push("CABOTAGE");
+  if (isCabotage) conds.push("CABOTAGE"); // yalnız örnek tarifede tanımlı
   if (o.portCall.repairPurpose && ["OP-005", "OP-006"].includes(o.op.typeCode)) conds.push("REPAIR_YARD");
-  if (o.portCall.dgClass) conds.push("DANGEROUS_CARGO");
+  if (dgClass) conds.push("DANGEROUS_CARGO", isContainerOrRoro(o.vessel.vesselType) ? "DANGEROUS_CARGO_CRP" : "DANGEROUS_CARGO_OTHER");
+  if (o.vessel.flag?.toUpperCase() === "TR") conds.push("TR_FLAG");
+  const holiday = holidayAt(serviceDate);
+  if (holiday) conds.push("HOLIDAY");
   const evs = o.events.map((e) => ({ ...e, occurredAt: e.occurredAt.toISOString() }));
   // tahmin modunda saha doğrulaması yoksa müşteri beyanı kullanılır (tahmini ve bağlayıcı değil); gerçekleşen hesapta yalnız doğrulanmış GT
   const declaredGt = (o.requests.find((r) => r.layer === "CUSTOMER_DECLARED")?.payload as { gt?: number } | undefined)?.gt;
   const gt = verifiedGt(o) ?? (mode === "estimate" && typeof declaredGt === "number" ? declaredGt : null);
   const results: CalcResult[] = [];
   for (const line of o.lines) {
-    if (!["PILOTAGE", "TOWAGE", "MOORING", "UNMOORING"].includes(line.kind)) continue;
+    if (!["PILOTAGE", "TOWAGE", "MOORING", "UNMOORING", "STANDBY_TUG"].includes(line.kind)) continue;
     let measured: number | null = null;
-    if (line.kind === "TOWAGE") {
-      const tugIds = [...new Set(evs.filter((e) => e.serviceKind === "TOWAGE" && e.assetId).map((e) => e.assetId!))];
-      const durs = tugIds.map((id) => actualDuration(evs, "TOWAGE", id).grossMinutes).filter((x): x is number => x !== null);
+    let bollard: number | null = null;
+    if (line.kind === "TOWAGE" || line.kind === "STANDBY_TUG") {
+      const tugIds = [...new Set(evs.filter((e) => e.serviceKind === line.kind && e.assetId).map((e) => e.assetId!))];
+      const durs = tugIds.map((id) => actualDuration(evs, line.kind as ServiceKindT, id).grossMinutes).filter((x): x is number => x !== null);
       measured = durs.length ? Math.max(...durs) : null;
+      if (line.kind === "STANDBY_TUG") {
+        // çeki gücü sertifikalı ve doğrulanmış değilse bilinmiyor sayılır (asla tahmin edilmez)
+        const bp = tugIds.map((id) => o.assets.find((a) => a.id === id)).filter((a) => a?.specVerified && a.bollardPullT).map((a) => Number(a!.bollardPullT));
+        bollard = bp.length ? Math.min(...bp) : null;
+      }
     }
-    const waiting = actualDuration(evs, line.kind as ServiceKindT).pauseMinutes;
+    const waiting = actualDuration(evs, (line.kind === "STANDBY_TUG" ? "TOWAGE" : line.kind) as ServiceKindT).pauseMinutes;
     const input: CalcInput = {
       operationRef: o.op.ref, serviceKind: line.kind as CalcInput["serviceKind"], serviceDate, gt,
       measuredMinutes: mode === "estimate" ? 60 : measured, allocatedUnits: line.allocatedUnits ?? 1, requestedUnits: line.billableUnits ?? 1,
       extraUnitsWrittenRequest: !!line.masterWrittenRequestDocId, conditionCodes: conds,
       completion: mode === "estimate" ? "COMPLETED" : completionOf(o.op.opStatus, line.cancelReason), waitingMinutes: mode === "estimate" ? 0 : waiting,
+      tariffCategory: category.code, categoryReason: category.reason, categoryAssumed: category.assumed, bollardPullT: bollard,
     };
-    results.push(calculate(input, version, statuses));
+    const r = calculate(input, version, statuses);
+    if (holiday) r.rules.unshift({ ruleCode: "R-025", applied: r.rules.some((x) => x.description.startsWith("Ulusal bayram") && x.applied), description: "Tatil tespiti", reason: `${holiday.name}${holiday.verified ? "" : " (tarih Diyanet takviminden doğrulanacak)"}` });
+    results.push(r);
   }
   return { results };
 }

@@ -6,26 +6,29 @@
 import Decimal from "decimal.js";
 import { createHash } from "node:crypto";
 import type {
-  CalcInput, CalcResult, RuleTrace, TariffVersionInput, ServiceTariff, GtBand, HourRounding,
+  CalcInput, CalcResult, RuleTrace, TariffVersionInput, ServiceTariff, GtBand, HourRounding, BollardBand,
 } from "./types";
 
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
 const PROD_STATUSES = new Set(["APPROVED", "IN_FORCE"]);
+/** Aynı tarihte birden fazla sürüm varsa öncelik (yüksek olan seçilir) */
+const STATUS_RANK: Record<string, number> = { IN_FORCE: 5, APPROVED: 4, EXPERT_REVIEW: 3, SOURCE_FOUND: 2, DRAFT: 1, REPEALED: 0 };
 
 export class TariffSelectionError extends Error {}
 
-/** R-009: Sürüm, yıl değil hizmet tarihine göre seçilir. */
+/**
+ * R-009: Sürüm, yıl değil hizmet tarihine göre seçilir.
+ * Aynı tarihi kapsayan sürümlerden statüsü en ileri olan seçilir; eşitlik varsa hata (belirsizlik kodlanmaz).
+ */
 export function selectTariffVersion(versions: TariffVersionInput[], serviceDateIso: string): TariffVersionInput {
   const d = new Date(serviceDateIso).getTime();
-  const hits = versions.filter((v) => {
-    const from = new Date(v.validFrom).getTime();
-    const to = new Date(v.validTo).getTime();
-    return d >= from && d <= to && v.status !== "REPEALED";
-  });
-  if (hits.length === 0) throw new TariffSelectionError(`Hizmet tarihi ${serviceDateIso} için geçerli tarife sürümü yok`);
-  if (hits.length > 1) throw new TariffSelectionError(`Hizmet tarihi için birden fazla sürüm çakışıyor: ${hits.map((h) => h.label).join(", ")}`);
-  return hits[0];
+  const hits = versions.filter((v) => d >= new Date(v.validFrom).getTime() && d <= new Date(v.validTo).getTime() && v.status !== "REPEALED");
+  if (hits.length === 0) throw new TariffSelectionError(`Hizmet tarihi ${serviceDateIso.slice(0, 10)} için geçerli tarife sürümü yok`);
+  const top = Math.max(...hits.map((h) => STATUS_RANK[h.status] ?? 0));
+  const best = hits.filter((h) => (STATUS_RANK[h.status] ?? 0) === top);
+  if (best.length > 1) throw new TariffSelectionError(`Hizmet tarihi için aynı statüde birden fazla sürüm çakışıyor: ${best.map((h) => h.label).join(", ")}`);
+  return best[0];
 }
 
 export function findBand(bands: GtBand[], gt: number): GtBand | undefined {
@@ -41,6 +44,11 @@ export function bandAmount(band: GtBand, gt: number): Decimal {
     amt = amt.plus(new Decimal(band.perBlock).times(blocks));
   }
   return amt;
+}
+
+export function findBollard(bands: BollardBand[], t: number): BollardBand | undefined {
+  // [fromT, toT) — üst sınır bir sonraki aralığa aittir; son aralık açık uçlu
+  return bands.find((b) => t >= b.fromT && (b.toT === null || t < b.toT));
 }
 
 /** R-015: Gerçek süre korunur; ücret miktarı tarife yuvarlamasıyla üretilir. */
@@ -60,13 +68,27 @@ export function hashInputs(input: CalcInput, versionId: string): string {
   return createHash("sha256").update(canonical).digest("hex");
 }
 
+/** Hizmet tarifesini çözer: kategorili sürümde kategori zorunlu. */
+export function resolveService(version: TariffVersionInput, kind: string, category?: string | null): { svc?: ServiceTariff; categoryLabel?: string; error?: string } {
+  const def = version.definition;
+  if (def.categories && Object.keys(def.categories).length) {
+    if (!category) return { error: "Tarife kategorisi belirlenmedi" };
+    const c = def.categories[category];
+    if (!c) return { error: `Bu sürümde "${category}" kategorisi yok` };
+    const svc = c.services[kind as keyof typeof c.services];
+    return svc ? { svc, categoryLabel: c.label } : { error: `"${c.label}" kategorisinde ${kind} hizmeti tanımlı değil` };
+  }
+  const svc = def.services[kind as keyof typeof def.services];
+  return svc ? { svc } : { error: `Bu tarife sürümünde ${kind} hizmeti tanımlı değil` };
+}
+
 export function calculate(input: CalcInput, version: TariffVersionInput, ruleStatuses: Record<string, string> = {}): CalcResult {
   const rules: RuleTrace[] = [];
   const missing: string[] = [];
   const blockers: string[] = [];
   const def = version.definition;
-  const svc: ServiceTariff | undefined = def.services[input.serviceKind];
   const inputHash = hashInputs(input, version.id);
+  const { svc, categoryLabel, error } = resolveService(version, input.serviceKind, input.tariffCategory);
 
   const base: Omit<CalcResult, "baseAmount" | "netAmount" | "billedQuantity" | "measuredQuantity" | "billedUnits" | "adjustmentRate" | "categoryReason"> = {
     operationRef: input.operationRef,
@@ -74,32 +96,43 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
     tariffVersionId: version.id,
     tariffLabel: version.label,
     currency: version.currency,
-    verifiedInputs: { gt: input.gt, measuredMinutes: input.measuredMinutes ?? null, allocatedUnits: input.allocatedUnits, requestedUnits: input.requestedUnits, conditionCodes: input.conditionCodes, completion: input.completion, serviceDate: input.serviceDate },
+    verifiedInputs: {
+      gt: input.gt, measuredMinutes: input.measuredMinutes ?? null, allocatedUnits: input.allocatedUnits, requestedUnits: input.requestedUnits,
+      conditionCodes: input.conditionCodes, completion: input.completion, serviceDate: input.serviceDate,
+      ...(input.tariffCategory ? { tariffCategory: input.tariffCategory } : {}), ...(input.bollardPullT != null ? { bollardPullT: input.bollardPullT } : {}),
+    },
     rules, missing, productionEligible: false, productionBlockers: blockers, inputHash,
     calcId: `CALC-${inputHash.slice(0, 12).toUpperCase()}`,
   };
+  const fail = (reason: string) => ({ ...base, categoryReason: reason, baseAmount: "0", measuredQuantity: null, billedQuantity: "0", billedUnits: 0, adjustmentRate: "0", netAmount: "0", productionBlockers: [...blockers, ...missing] });
 
-  if (!svc) {
-    missing.push(`Bu tarife sürümünde ${input.serviceKind} hizmeti tanımlı değil`);
-    return { ...base, categoryReason: "-", baseAmount: "0", measuredQuantity: null, billedQuantity: "0", billedUnits: 0, adjustmentRate: "0", netAmount: "0", productionBlockers: [...blockers, "Hizmet tarifesi yok"] };
-  }
+  if (!svc) { missing.push(error ?? "Hizmet tarifesi yok"); return fail("-"); }
 
-  // GT zorunlu — bilinmeyen değer sıfır kabul edilmez
-  if (input.gt === null || input.gt === undefined) missing.push("Doğrulanmış GT değeri yok");
+  const byBollard = svc.pricing === "BOLLARD_PULL";
+  // Bilinmeyen değer sıfır kabul edilmez
+  if (!byBollard && (input.gt === null || input.gt === undefined)) missing.push("Doğrulanmış GT değeri yok");
+  if (byBollard && (input.bollardPullT === null || input.bollardPullT === undefined)) missing.push("Römorkör çeki gücü (sertifikalı) yok");
   if (svc.unit === "HOUR" && (input.measuredMinutes === null || input.measuredMinutes === undefined)) missing.push("Gerçekleşen hizmet süresi yok");
+  if (missing.length) return fail("Eksik girdi nedeniyle hesaplanamadı");
 
-  if (missing.length) {
-    return { ...base, categoryReason: "Eksik girdi nedeniyle hesaplanamadı", baseAmount: "0", measuredQuantity: null, billedQuantity: "0", billedUnits: 0, adjustmentRate: "0", netAmount: "0", productionBlockers: [...blockers, ...missing] };
+  let unitAmount: Decimal;
+  let categoryReason: string;
+  const catText = categoryLabel ? `${categoryLabel}${input.categoryReason ? ` (${input.categoryReason})` : ""} · ` : "";
+  if (byBollard) {
+    const b = findBollard(svc.bollardBands ?? [], input.bollardPullT as number);
+    if (!b) { missing.push(`${input.bollardPullT} t çeki gücü için tarife aralığı yok`); return fail("Çeki gücü aralığı bulunamadı"); }
+    unitAmount = new Decimal(b.rate);
+    categoryReason = `${catText}Çeki gücü ${input.bollardPullT} t → ${b.fromT}–${b.toT ?? "∞"} t aralığı`;
+  } else {
+    const rawGt = input.gt as number;
+    const gt = svc.gtCap && rawGt > svc.gtCap ? svc.gtCap : rawGt;
+    const band = findBand(svc.bands, gt);
+    if (!band) { missing.push(`GT ${rawGt} için kademe yok`); return fail("Kademe bulunamadı"); }
+    unitAmount = bandAmount(band, gt);
+    categoryReason = `${catText}GT ${rawGt}${gt !== rawGt ? ` → tavan ${gt} GT uygulandı` : ""} → kademe ${band.gtFrom}–${band.gtTo ?? "∞"}`;
+    if (gt !== rawGt) rules.push({ ruleCode: "R-023", applied: true, description: "GT tavanı", reason: `${svc.gtCap} GT üzeri gemilerde ${svc.gtCap} GT ücreti uygulanır` });
   }
-
-  const gt = input.gt as number;
-  const band = findBand(svc.bands, gt);
-  if (!band) {
-    missing.push(`GT ${gt} için kademe yok`);
-    return { ...base, categoryReason: "Kademe bulunamadı", baseAmount: "0", measuredQuantity: null, billedQuantity: "0", billedUnits: 0, adjustmentRate: "0", netAmount: "0", productionBlockers: [...blockers, ...missing] };
-  }
-  const categoryReason = `GT ${gt} → kademe ${band.gtFrom}–${band.gtTo ?? "∞"} (${input.serviceKind})`;
-  const unitAmount = bandAmount(band, gt);
+  if (input.categoryAssumed) blockers.push("Tarife kategorisi varsayıma dayanıyor (kabotaj/liner değerlendirmesi gerekli)");
 
   // Miktar
   let measuredQuantity: string | null = null;
@@ -108,12 +141,13 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
     const mins = input.measuredMinutes as number;
     measuredQuantity = new Decimal(mins).div(60).toFixed(4);
     qty = billedHours(mins, svc.rounding ?? { mode: "CEIL_HOUR", minimumHours: 1 });
-    rules.push({ ruleCode: "R-015", applied: true, description: "Saat kesri yuvarlaması", reason: `Gerçek ${mins} dk → ücretlendirilen ${qty.toString()} saat (${svc.rounding?.mode})` });
+    rules.push({ ruleCode: "R-015", applied: true, description: "Saat kesri yuvarlaması", reason: `Gerçek ${mins} dk → ücretlendirilen ${qty.toString()} saat (${svc.rounding?.mode ?? "CEIL_HOUR"})` });
   }
 
   // Araç sayısı — R-004 / R-019
-  let billedUnits = input.requestedUnits;
-  if (input.serviceKind === "TOWAGE") {
+  let billedUnits = 1;
+  if (input.serviceKind === "TOWAGE" || input.serviceKind === "STANDBY_TUG") {
+    billedUnits = input.requestedUnits;
     if (input.allocatedUnits > input.requestedUnits) {
       if (input.extraUnitsWrittenRequest) {
         billedUnits = input.allocatedUnits;
@@ -123,20 +157,19 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
       }
     }
     rules.push({ ruleCode: "R-019", applied: true, description: "Tahsis ≠ ücretlendirme", reason: `Tahsis: ${input.allocatedUnits}, ücretlendirilen: ${billedUnits}` });
-  } else {
-    billedUnits = 1;
   }
 
   const gross = unitAmount.times(qty).times(billedUnits);
 
-  // R-005 / R-006: en yüksek artırım ve en yüksek indirim; birlikte ise oran farkı
-  const applicable = def.adjustments.filter((a) => input.conditionCodes.includes(a.code));
-  for (const a of def.adjustments) {
-    if (input.conditionCodes.includes(a.code) && !a.appliesTo.includes(input.serviceKind)) {
-      rules.push({ ruleCode: a.ruleCode, applied: false, description: a.label, reason: `${a.label} ${input.serviceKind} hizmetine uygulanmaz` });
-    }
+  // R-005: en yüksek artırım ve en yüksek indirim; birlikte ise oran farkı
+  const cat = input.tariffCategory ?? null;
+  const forService: typeof def.adjustments = [];
+  for (const a of def.adjustments.filter((x) => input.conditionCodes.includes(x.code))) {
+    if (!a.appliesTo.includes(input.serviceKind)) { rules.push({ ruleCode: a.ruleCode, applied: false, description: a.label, reason: `${a.label} bu hizmete uygulanmaz` }); continue; }
+    if (cat && a.excludeCategories?.includes(cat)) { rules.push({ ruleCode: a.ruleCode, applied: false, description: a.label, reason: `${def.categories?.[cat]?.label ?? cat} sütunundaki gemiler bu orandan yararlanamaz` }); continue; }
+    if (a.onlyCategories && (!cat || !a.onlyCategories.includes(cat))) { rules.push({ ruleCode: a.ruleCode, applied: false, description: a.label, reason: "Gemi kategorisi bu oranın kapsamında değil" }); continue; }
+    forService.push(a);
   }
-  const forService = applicable.filter((a) => a.appliesTo.includes(input.serviceKind));
   const pickMax = (k: "SURCHARGE" | "DISCOUNT") => forService.filter((a) => a.kind === k).sort((x, y) => new Decimal(y.rate).cmp(x.rate));
   const surcharges = pickMax("SURCHARGE");
   const discounts = pickMax("DISCOUNT");
@@ -174,6 +207,8 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
   // Üretim uygunluğu
   if (version.isDemo) blockers.push("Tarife sürümü ÖRNEK veridir (isDemo)");
   if (!PROD_STATUSES.has(version.status)) blockers.push(`Tarife sürümü statüsü ${version.status}; onaylı değil`);
+  const open = (def.verificationNotes ?? []).filter((n) => !n.resolved);
+  if (open.length) blockers.push(`Tarife sürümünde ${open.length} çözülmemiş doğrulama notu var`);
   const used = new Set([...svc.ruleCodes, ...rules.filter((r) => r.applied).map((r) => r.ruleCode)]);
   for (const code of used) {
     const st = ruleStatuses[code];

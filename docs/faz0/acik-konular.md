@@ -18,3 +18,5 @@ Geliştirme bu konular kapanmadan **örnek verilerle** devam eder; örnek verile
 | AK-12 | KDV/istisna eşlemesi (hizmet bazlı) | Muhasebe / Mali müşavir | Görüş yazısı | Faz 6 | Tahakkuk |
 | AK-13 | RPO/RTO hedefleri | Yönetim | Karar | Faz 9 | Altyapı |
 | AK-14 | Mevcut "Yalova Pilot Portal" (yalovapilot.com) veri devri ve "Manevra Hesaplama" sayfasının hesap mantığı | İşletme | Erişim / dışa aktarım | Faz 2 | Göç, Hesap |
+| AK-15 | KRP 2026–2027 resmî ücret eki veya DGM'nin duyurduğu ABD TÜFE oranı; Petkim Rev.4 aktarımının dönemi ve 7 doğrulama notu | Tarife sorumlusu | Bakanlık KRP ücret eki / DGM duyurusu | Faz 3 kapanışı | Tarife |
+| AK-16 | 2026–2027 dini bayram tarihleri ve arife yarım gününün tarifeye yansıması | Tarife sorumlusu | Diyanet takvimi / Bakanlık görüşü | Faz 3 | Tarife (R-025) |
