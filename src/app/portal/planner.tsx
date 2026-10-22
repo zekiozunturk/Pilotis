@@ -1,7 +1,7 @@
 "use client";
 import { useActionState, useState } from "react";
 import { estimatePackages, addToCart, type PortalState } from "./actions";
-import { ActionForm, SubmitButton } from "@/components/ActionForm";
+import { ActionForm, SubmitButton, submitWith } from "@/components/ActionForm";
 import type { ActionState } from "@/app/actions";
 import { SERVICE_LABELS } from "@/data/catalog";
 import { displayAlt, type DisplayLike } from "@/lib/money";
@@ -9,19 +9,22 @@ import { displayAlt, type DisplayLike } from "@/lib/money";
 type Opt = { id: string; label: string };
 const money = (v: string, c: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(Number(v));
 
-export function PortalPlanner({ vessels, facilities, hidden, display, invoiceNote }: { vessels: (Opt & { gt: string | null; type: string | null })[]; facilities: Opt[]; hidden: Record<string, string>; display: DisplayLike; invoiceNote: string }) {
+export function PortalPlanner({ vessels, facilities, hidden, display, invoiceNote, minLocal, leadHours, phone }: { vessels: (Opt & { gt: string | null; type: string | null })[]; facilities: Opt[]; hidden: Record<string, string>; display: DisplayLike; invoiceNote: string; minLocal?: string | null; leadHours?: number; phone?: string }) {
+  const [when, setWhen] = useState("");
+  const tooSoon = !!minLocal && !!when && when < minLocal;
   const [state, action, pending] = useActionState<PortalState, FormData>(estimatePackages, null);
   const [vesselId, setVesselId] = useState("");
   const v = vessels.find((x) => x.id === vesselId);
   return (
     <div className="grid" style={{ gridTemplateColumns: "minmax(300px, 380px) 1fr", alignItems: "start" }}>
-      <form action={action} className="card">
+      <form onSubmit={submitWith(action)} className="card">
         <h2>1 · Gemi ve iş</h2>
         <div className="field"><label>Gemi *</label><select name="vesselId" required value={vesselId} onChange={(e) => setVesselId(e.target.value)}><option value="">Seçin…</option>{vessels.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>Listede yoksa <a href="/gemiler">gemi kartı açın</a>.</div></div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>Listede yoksa <a href={minLocal ? "/portal/gemilerim#yeni" : "/gemiler"}>yeni gemi ekleyin</a>.</div></div>
         <div className="field"><label>Başlangıç tesisi</label><select name="fromFacilityId" defaultValue=""><option value="">—</option>{facilities.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></div>
         <div className="field"><label>Hedef tesis</label><select name="toFacilityId" defaultValue=""><option value="">—</option>{facilities.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></div>
-        <div className="field"><label>İstenen tarih / saat (TR) *</label><input type="datetime-local" name="plannedStart" required /></div>
+        <div className="field"><label>İstenen tarih / saat (TR) *</label><input type="datetime-local" name="plannedStart" required min={minLocal ?? undefined} value={when} onChange={(e) => setWhen(e.target.value)} aria-invalid={tooSoon} aria-describedby="lead-hint" />
+          {minLocal && <div id="lead-hint" className={tooSoon ? "field-err" : "muted"} style={{ fontSize: 11.5, marginTop: 3 }}>{tooSoon ? `✕ Talep en az ${leadHours} saat önceden verilmeli. En erken: ${minLocal.replace("T", " ").split(" ").map((x, i) => (i === 0 ? x.split("-").reverse().join(".") : x)).join(" ")}. Acil işler için ${phone}.` : `En az ${leadHours} saat önceden talep verilir · en erken ${minLocal.replace("T", " ").split(" ").map((x, i) => (i === 0 ? x.split("-").reverse().join(".") : x)).join(" ")}`}</div>}</div>
         <label className="check"><input type="checkbox" name="repair" /> Bakım-onarım amaçlı (belge eklenecek)</label>
         <div className="sep" />
         <h2>2 · Beyan</h2>
@@ -37,13 +40,13 @@ export function PortalPlanner({ vessels, facilities, hidden, display, invoiceNot
           <div className="field" style={{ display: "flex", alignItems: "flex-end" }}><label className="check"><input type="checkbox" name="isLiner" /> Düzenli hat (liner)</label></div>
         </div>
         {/tanker/i.test(v?.type ?? "") && <label className="check"><input type="checkbox" name="gasFreeCert" /> Gas-free belgesi mevcut</label>}
-        <div style={{ marginTop: 12 }}><button className="btn orange" disabled={pending}>{pending ? "Hesaplanıyor…" : "Önerilen paketleri göster"}</button></div>
+        <div style={{ marginTop: 12 }}><button className="btn orange" disabled={pending || tooSoon}>{pending ? "Hesaplanıyor…" : "Fiyatı hesapla ve paketleri göster"}</button></div>
       </form>
 
       <div>
         {state?.ok === false && <div className="alert bad"><span>⚠</span><div>{state.message}</div></div>}
         <div className="alert info" style={{ marginBottom: 10 }}><span>₺</span><div>{invoiceNote}</div></div>
-        {!state?.cards && <div className="card muted">Bilgileri girip <b>Önerilen paketleri göster</b>'e basın. Her kartta kapsam, tahmini bedel, gerekli belgeler ve eksik bilgiler görünür.</div>}
+        {!state?.cards && <div className="card muted">Bilgileri girip <b>Fiyatı hesapla ve paketleri göster</b>'e basın. Her kartta kapsam, tahmini bedel, gerekli belgeler ve eksik bilgiler görünür.</div>}
         {state?.cards && (
           <div className="grid g2">
             {state.cards.map((c) => (

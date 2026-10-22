@@ -2,6 +2,7 @@
 import { useActionState, useState } from "react";
 import { simulateCalc, type SimState } from "@/app/actions";
 import { CalcCardClient } from "./card";
+import { submitWith } from "@/components/ActionForm";
 
 type V = { id: string; label: string; adjustments: { code: string; label: string }[]; categorized: boolean };
 
@@ -11,7 +12,7 @@ export function Simulator({ versions, categories }: { versions: V[]; categories:
   const v = versions.find((x) => x.id === vid);
   return (
     <div className="grid g2">
-      <form action={action} className="card">
+      <form onSubmit={submitWith(action)} className="card">
         <h2>Hesap simülatörü</h2>
         <div className="field"><label>Tarife sürümü</label><select name="versionId" value={vid} onChange={(e) => setVid(e.target.value)}>{versions.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></div>
         <div className="grid g2" style={{ gap: 10 }}>

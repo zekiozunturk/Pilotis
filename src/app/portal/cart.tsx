@@ -19,11 +19,20 @@ export function CartItemControls({ itemId, billingPartyId, parties, hidden }: { 
   );
 }
 
-export function SubmitCartForm({ hidden, count }: { hidden: Record<string, string>; count: number }) {
+export function SubmitCartForm({ hidden, count, signer, blocked }: { hidden: Record<string, string>; count: number; signer?: { name: string; title: string }; blocked?: string | null }) {
   return (
     <ActionForm action={submitCart as A} hidden={hidden}>
-      <label className="check" style={{ marginBottom: 8 }}><input type="checkbox" required /> Beyan ettiğim gemi, yük ve arıza bilgilerinin doğru olduğunu; beyana aykırılık halinde hizmetin durdurulabileceğini ve yeniden fiyatlandırılabileceğini kabul ediyorum.</label>
-      <SubmitButton className="btn orange">{count} talebi gönder</SubmitButton>
+      <fieldset className="sign">
+        <legend>Beyanname onayı</legend>
+        <p className="small">Sepetteki her talep için girdiğiniz gemi ve yük bilgileri <a href="/portal/belgeler#BEYAN_TAAHHUDU" target="_blank">Gemi ve Yük Beyannamesi Taahhüdü</a> ile birlikte kaydedilir. Onayınız ad, unvan, zaman ve metin özetiyle saklanır.</p>
+        <div className="grid g2" style={{ gap: 8 }}>
+          <div className="field"><label>Beyan eden — ad soyad *</label><input name="signerName" defaultValue={signer?.name ?? ""} required minLength={3} /></div>
+          <div className="field"><label>Unvan</label><input name="signerTitle" defaultValue={signer?.title ?? ""} /></div>
+        </div>
+        <label className="check"><input type="checkbox" name="declAccept" required /> Beyan ettiğim gemi, yük ve arıza bilgilerinin doğru olduğunu; beyana aykırılık halinde hizmetin durdurulabileceğini ve yeniden fiyatlandırılabileceğini kabul ediyorum.</label>
+      </fieldset>
+      {blocked && <div className="alert warn" style={{ margin: "8px 0" }}><span>⚠</span><div>{blocked} <a href="/portal/belgeler">Sözleşme ve onaylar →</a></div></div>}
+      <SubmitButton className="btn orange">{count} talebi Yalova Pilotaj'a gönder</SubmitButton>
     </ActionForm>
   );
 }

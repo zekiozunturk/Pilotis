@@ -2,6 +2,7 @@
 import { useMemo, useState, useActionState, useEffect, Fragment } from "react";
 import { reviewTranslation, addTerm, editTerm, type TState } from "./actions";
 import { LANGS } from "@/data/terms";
+import { submitWith } from "@/components/ActionForm";
 
 type T = { n: number; slug: string; tr: string; aliases: string[]; definition: string; source: string | null; confused: string | null; status: string; version: number; translations: Record<string, { text: string; reviewed: boolean; reviewer?: string }> };
 
@@ -15,7 +16,7 @@ function Review({ n, lang, text }: { n: number; lang: string; text: string }) {
   return (
     <details style={{ display: "inline-block" }}>
       <summary style={{ cursor: "pointer", fontSize: 11 }}>onayla</summary>
-      <form action={act} style={{ display: "grid", gap: 4, marginTop: 4, minWidth: 220 }}>
+      <form onSubmit={submitWith(act)} style={{ display: "grid", gap: 4, marginTop: 4, minWidth: 220 }}>
         <input type="hidden" name="n" value={n} /><input type="hidden" name="lang" value={lang} />
         <input name="text" defaultValue={text} dir={lang === "ar" ? "rtl" : "ltr"} style={{ padding: "3px 6px" }} />
         <input name="reviewer" placeholder="Kontrol eden ad / unvan *" required style={{ padding: "3px 6px" }} />
@@ -31,7 +32,7 @@ function Edit({ t }: { t: T }) {
   return (
     <details style={{ marginTop: 4 }}>
       <summary style={{ cursor: "pointer", fontSize: 11.5, color: "var(--navy-700)" }}>✎ düzenle (v{t.version})</summary>
-      <form action={act} style={{ marginTop: 6, display: "grid", gap: 6, background: "var(--bg)", padding: 8, borderRadius: 8 }}>
+      <form onSubmit={submitWith(act)} style={{ marginTop: 6, display: "grid", gap: 6, background: "var(--bg)", padding: 8, borderRadius: 8 }}>
         <input type="hidden" name="n" value={t.n} />
         <div><label>Türkçe terim *</label><input name="tr" defaultValue={t.tr} required /></div>
         <div><label>İşletme karşılıkları (virgülle)</label><input name="aliases" defaultValue={t.aliases.join(", ")} /></div>
@@ -66,7 +67,7 @@ export function Glossary({ terms, canEdit }: { terms: T[]; canEdit: boolean }) {
       <details className="card" id="yeni-terim" style={{ marginBottom: 12, borderColor: "var(--orange)" }}>
         <summary style={{ cursor: "pointer", fontWeight: 700, color: "var(--orange)" }}>+ Yeni terim ekle (elle)</summary>
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Numara otomatik ve kalıcı verilir. Çeviriler taslak olarak kaydedilir; onay için kontrol eden kişinin adı gerekir.</div>
-        <form action={add} style={{ marginTop: 10 }}>
+        <form onSubmit={submitWith(add)} style={{ marginTop: 10 }}>
           <div className="grid g3" style={{ gap: 8 }}>
             <div><label>Türkçe terim *</label><input name="tr" required /></div>
             <div><label>İşletme karşılıkları (virgülle)</label><input name="aliases" /></div>

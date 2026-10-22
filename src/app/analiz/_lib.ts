@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { currentRole, requireInternalPage } from "@/lib/session";
+import { currentPersonId, currentRole, requireInternalPage } from "@/lib/session";
 import type { Role } from "@/lib/workflow";
 import { analyticsAccess } from "@/lib/analytics/access";
 import { loadDataset, parseFilter, comparisonFilter, type SP } from "@/lib/analytics/load";
@@ -19,7 +19,7 @@ export async function analysis(spP: Promise<SP>, as?: { role: Role; person?: str
   const f = parseFilter(sp);
   const cmp = comparisonFilter(f, sp);
   const ds = await loadDataset({ from: Math.min(f.from, cmp?.from ?? f.from), to: f.to });
-  const me = as ? as.person ?? null : (await cookies()).get("pilotis_person")?.value ?? null;
+  const me = as ? as.person ?? null : await currentPersonId();
   let scopeNote: string | null = null;
   const restrict = (x: Filter) => {
     if (access.people === "SELF") { x.personnelIds = me ? [me] : ["__none__"]; scopeNote = "Yalnız kendi görev ve çalışma kayıtlarınız gösterilir."; }

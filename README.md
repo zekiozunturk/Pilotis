@@ -72,6 +72,23 @@ Testler: `npm test` → 85 birim/referans testi.
 
 Testler: `npm test` → 106 test.
 
+## Giriş, roller ve sunum hesapları
+Uygulama oturum ister (`/giris`). Şifreler scrypt ile özetlenir; oturum belirteci çerezde, özeti veritabanında tutulur; 5 hatalı denemede hesap 10 dakika kilitlenir.
+
+| Kullanıcı | Şifre | Rol | Açılış ekranı |
+|---|---|---|---|
+| `admin` | 123456 | Sistem yöneticisi (rol önizleme yapabilir) | /yonetim |
+| `yonetici` | 123456 | İşletme yöneticisi | / (kokpit) |
+| `kaptan` | 123456 | Kılavuz kaptan | /saha (Görevlerim) |
+| `romorkor` | 123456 | Römorkör kaptanı (R1-A) | /saha |
+| `kiyi` | 123456 | Kıyı operasyon sorumlusu | / |
+| `musteri` | 123456 | Müşteri/acente + fatura muhatabı | /portal |
+| `muhasebe` | 123456 | Muhasebe | /muhasebe |
+
+Canlıda `DEMO_LOGINS=0` ile sunum kartları gizlenir; sunum hesapları **Kullanıcılar** ekranından kapatılmalıdır. HTTPS arkasında `COOKIE_SECURE=1` verin.
+
+Müşteri akışı: `/kayit` (cari + yetkili, KVKK) → gemi ekle → fiyat hesapla → sepet → fatura muhatabı → hizmet sözleşmesi ve ödeme taahhüdü onayı (bir kez) → beyanname onayı (her talepte) → gönderim → talepname/taahhütname onayı. İstenen zaman asgari bildirim süresinden (varsayılan 6 saat, **Ayarlar**dan değişir) yakınsa portal talebi reddeder.
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

@@ -17,6 +17,7 @@ const accLabel = STATUS_SETS.find((x) => x.key === "accrualStatus")!.values;
 export default async function Home() {
   const scope = await currentScope();
   if (scope.external) redirect("/portal");
+  if (["PILOT", "TUG_MASTER", "CREW"].includes(scope.role)) redirect("/saha");
   const now = new Date();
   const onDuty = await db.select({ s: sc.shifts, p: sc.personnel, a: sc.fleetAssets }).from(sc.shifts).innerJoin(sc.personnel, eq(sc.personnel.id, sc.shifts.personnelId)).innerJoin(sc.fleetAssets, eq(sc.fleetAssets.id, sc.shifts.assetId))
     .where(and(eq(sc.shifts.category, "WORK"), lte(sc.shifts.startAt, now), gt(sc.shifts.endAt, now)));

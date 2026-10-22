@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { db, schema as s } from "@/db";
-import { currentScope } from "@/lib/session";
+import { currentScope, currentUser } from "@/lib/session";
+import { minLeadHours, earliestAllowed, toLocalInput } from "@/lib/lead-time";
+import { missingForRequests } from "@/lib/contracts";
+import { OPERATOR } from "@/data/catalog";
 import { OPERATION_TYPES } from "@/data/catalog";
 import { fmtDT, fmtMoney } from "@/lib/format";
 import { PortalPlanner } from "./planner";
@@ -13,7 +16,7 @@ import { CartItemControls, SubmitCartForm } from "./cart";
 
 export const metadata = { title: "Müşteri portalı" };
 
-export default async function Portal({ searchParams }: { searchParams: Promise<{ firma?: string; gonderildi?: string }> }) {
+export default async function Portal({ searchParams }: { searchParams: Promise<{ firma?: string; gonderildi?: string; hosgeldin?: string }> }) {
   const scope = await currentScope();
   const sp = await searchParams;
   const parties = await db.select().from(s.parties).where(eq(s.parties.kind, "COMPANY")).orderBy(asc(s.parties.legalName));
@@ -32,13 +35,18 @@ export default async function Portal({ searchParams }: { searchParams: Promise<{
     .where(or(eq(s.operations.requesterPartyId, party.id), eq(s.operations.billingPartyId, party.id)))
     .orderBy(desc(s.operations.createdAt)).limit(10) : [];
   const hidden: Record<string, string> = scope.external || !party ? {} : { onBehalfPartyId: party.id };
+  const leadHours = await minLeadHours();
+  const minLocal = scope.external ? toLocalInput(earliestAllowed(leadHours)) : null;
+  const missing = party ? await missingForRequests(party.id) : [];
+  const user = await currentUser();
+  const pendingApprovals = party ? myOps.filter(({ op }) => op.billingPartyId === party.id && op.approvalStatus === "AWAITING_BILLING_PARTY").length : 0;
   const vName = (id: string) => vessels.find((v) => v.id === id)?.name ?? "—";
   const fName = (id: string | null) => facilities.find((f) => f.id === id)?.name ?? "—";
 
   return (
     <>
       <div className="pagehead">
-        <div><h1>Müşteri talep portalı</h1><div className="muted">Gemi → tesis → zaman → beyan → önerilen paketler → sepet → fatura muhatabı → gönderim</div></div>
+        <div><h1>{scope.external ? "Talep oluştur" : "Müşteri talep portalı"}</h1><div className="muted">Gemi → tesis → zaman → beyan → otomatik fiyat → sepet → fatura muhatabı → beyanname onayı → Yalova Pilotaj onayına gönderim</div></div>
         {!scope.external && (
           <form style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span className="muted" style={{ fontSize: 12 }}>Adına işlem yapılan firma:</span>
@@ -50,10 +58,14 @@ export default async function Portal({ searchParams }: { searchParams: Promise<{
       {sp.gonderildi && <div className="alert ok" style={{ marginBottom: 16 }}><span>✓</span><div><b>Talepleriniz alındı</b>
         {sp.gonderildi.split(",").filter(Boolean).map((r) => <Link key={r} className="mono" href={`/operasyonlar/${r}`} style={{ marginRight: 10 }}>{r}</Link>)}
         <div>Talepler planlama ve emniyet değerlendirmesinden sonra kesinleşir; fatura muhatabı onayı ayrıca istenir.</div></div></div>}
+      {sp.hosgeldin && <div className="alert ok" style={{ marginBottom: 12 }}><span>✓</span><div><b>Hoş geldiniz — firma hesabınız açıldı</b>Gemi ekleyip fiyat hesaplayabilir ve talep gönderebilirsiniz. Cari bilgileriniz Yalova Pilotaj tarafından doğrulanacaktır.</div></div>}
+      {party?.registrationStatus === "PENDING_REVIEW" && <div className="alert warn" style={{ marginBottom: 12 }}><span>⏳</span><div><b>Cari kaydınız doğrulama bekliyor</b>Talepleriniz alınır; planlamaya alınmadan önce vergi ve fatura bilgileriniz Yalova Pilotaj muhasebesince kontrol edilir.</div></div>}
+      {party && missing.length > 0 && <div className="alert warn" style={{ marginBottom: 12 }}><span>✎</span><div><b>Talep gönderebilmek için onayınız gerekiyor</b>{missing.map((m) => m.title).join(" · ")} — <Link href="/portal/belgeler">Sözleşme ve onaylar sayfasında okuyup onaylayın</Link>. Fiyat hesaplama ve sepet bu onay olmadan da çalışır.</div></div>}
+      {pendingApprovals > 0 && <div className="alert info" style={{ marginBottom: 12 }}><span>✍</span><div><b>{pendingApprovals} iş için fatura muhatabı onayınız bekleniyor</b><Link href="/portal/belgeler#isler">Talepname/taahhütnameleri görüntüleyip onaylayın →</Link></div></div>}
       {!party ? <div className="alert info"><span>ⓘ</span><div>Personel olarak bir müşteri firması adına talep oluşturmak için yukarıdan firma seçin. Müşteri hesapları doğrudan kendi firmalarıyla açılır.</div></div> : <>
         <div className="alert info" style={{ marginBottom: 16 }}><span>ⓘ</span><div><b>{party.legalName}</b>Sepete eklemek kaynak rezervasyonu veya operasyon izni değildir. Tahmini bedeller onaylanmamış tarifeyle hesaplanır ve bağlayıcı değildir.</div></div>
         <PortalPlanner vessels={vessels.map((v) => ({ id: v.id, label: `${v.name}${v.gt ? ` · ${Number(v.gt).toLocaleString("tr-TR")} GT` : " · GT bilinmiyor"}`, gt: v.gt, type: v.vesselType }))}
-          facilities={facilities.map((f) => ({ id: f.id, label: f.name }))} hidden={hidden} display={await getDisplay()} invoiceNote={INVOICE_NOTE} />
+          facilities={facilities.map((f) => ({ id: f.id, label: f.name }))} hidden={hidden} display={await getDisplay()} invoiceNote={INVOICE_NOTE} minLocal={minLocal} leadHours={leadHours} phone={OPERATOR.phone} />
 
         <div className="card" style={{ marginTop: 16 }}>
           <h2>Sepet ({items.length})</h2>
@@ -72,7 +84,7 @@ export default async function Portal({ searchParams }: { searchParams: Promise<{
               </table>
             </div>
             {items.some((i) => !i.billingPartyId) && <div className="alert warn" style={{ marginTop: 10 }}><span>⚠</span><div>Bazı kalemlerde fatura muhatabı seçilmedi. Talep gönderilebilir ancak planlama öncesinde muhatap belirlenip onaylanmalıdır (R-018).</div></div>}
-            <div style={{ marginTop: 12 }}><SubmitCartForm hidden={hidden} count={items.length} /></div>
+            <div style={{ marginTop: 12 }}><SubmitCartForm hidden={hidden} count={items.length} signer={scope.external && user ? { name: user.name, title: user.title ?? "" } : undefined} blocked={missing.length ? `Gönderim için önce ${missing.map((m) => m.title).join(" ve ")} onaylanmalı.` : null} /></div>
           </>}
         </div>
 

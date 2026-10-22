@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, schema as s } from "@/db";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { currentRole, currentScope, ROLE_LABELS } from "@/lib/session";
+import { currentRole, currentRoles, currentScope, requireUser, ROLE_LABELS } from "@/lib/session";
 import { declarationImpact, type Declaration } from "@/lib/declaration";
 import { generateDocument } from "@/lib/docs/service";
 import { DOC_TYPES, type DocType } from "@/lib/docs/builders";
@@ -13,6 +13,7 @@ import { storage } from "@/lib/storage";
 import { canTransition, OP_STATUS_TRANSITIONS, type Role } from "@/lib/workflow";
 import { computeOperation, loadOperation, nextOperationRef, recordAudit } from "@/lib/ops";
 import { createHash } from "node:crypto";
+import { imoValid } from "@/lib/exchange/parse";
 import { calculate as calcEngine, selectTariffVersion as pickVersion } from "@/lib/tariff/engine";
 import { loadTariffs, ruleStatusMap } from "@/lib/ops";
 import { getFxTable } from "@/lib/fx";
@@ -25,10 +26,14 @@ export async function setDisplayCurrency(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+/** Sistem yöneticisinin rol önizlemesi (sunum/destek). Diğer kullanıcılar rolünü değiştiremez. */
 export async function setRole(formData: FormData) {
+  const u = await requireUser();
+  if (!u.roles.includes("SYSTEM_ADMIN")) return;
   const role = String(formData.get("role"));
   if (!(role in ROLE_LABELS)) return;
   const c = await cookies();
+  if (role === "SYSTEM_ADMIN") { c.delete("pilotis_role"); c.delete("pilotis_party"); revalidatePath("/", "layout"); return; }
   c.set("pilotis_role", role, { httpOnly: true, sameSite: "lax", path: "/" });
   const party = String(formData.get("party") || "");
   if (party) c.set("pilotis_party", party, { httpOnly: true, sameSite: "lax", path: "/" }); else c.delete("pilotis_party");
@@ -37,8 +42,9 @@ export async function setRole(formData: FormData) {
 
 async function requireRole(allowed: Role[]) {
   const role = await currentRole();
-  if (role !== "SYSTEM_ADMIN" && !allowed.includes(role)) throw new Error(`Bu işlem için yetkiniz yok (${ROLE_LABELS[role]})`);
-  return role;
+  const all = await currentRoles();
+  if (role !== "SYSTEM_ADMIN" && !all.some((r) => allowed.includes(r))) throw new Error(`Bu işlem için yetkiniz yok (${ROLE_LABELS[role]})`);
+  return all.find((r) => allowed.includes(r)) ?? role;
 }
 
 // ───────── Gemi ─────────
@@ -58,6 +64,7 @@ export async function createVessel(_: unknown, formData: FormData) {
   const parsed = vesselSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: parsed.error.issues.map((i) => i.message).join(" · ") };
   const d = parsed.data;
+  if (d.imo && !imoValid(d.imo)) return { ok: false, message: "IMO numarası geçersiz (denetim hanesi tutmuyor) — gemi belgelerinden kontrol edin" };
   try {
     const [v] = await db.insert(s.vessels).values({
       name: d.name.toUpperCase(), imo: d.imo || null, flag: d.flag || null, vesselType: d.vesselType || null,
@@ -67,8 +74,8 @@ export async function createVessel(_: unknown, formData: FormData) {
   } catch (e) {
     return { ok: false, message: String((e as Error).message).includes("unique") ? "Bu IMO numarası zaten kayıtlı" : "Kayıt başarısız" };
   }
-  revalidatePath("/gemiler");
-  return { ok: true, message: "Gemi sunucuya kaydedildi" };
+  revalidatePath("/gemiler"); revalidatePath("/portal"); revalidatePath("/portal/gemilerim");
+  return { ok: true, message: `${d.name.toUpperCase()} kaydedildi — talep ekranında seçebilirsiniz` };
 }
 
 // ───────── Operasyon ─────────
@@ -232,7 +239,7 @@ async function setBillingPartyImpl(formData: FormData) {
 }
 
 async function decideBillingImpl(formData: FormData) {
-  const role = await requireRole(["BILLING_PARTY", "OPERATIONS_MANAGER"]);
+  const role = await requireRole(["BILLING_PARTY", "CUSTOMER", "OPERATIONS_MANAGER"]);
   const ref = String(formData.get("ref"));
   const decision = String(formData.get("decision")) as "APPROVED" | "REJECTED";
   const person = String(formData.get("authorizedPerson") || "").trim();

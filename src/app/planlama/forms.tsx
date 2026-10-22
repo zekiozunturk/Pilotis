@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useRef, useState, startTransition } from "react";
 import { checkShift, createShift, suggestCrew, assignCrew, type PlanState } from "./actions";
+import { submitWith } from "@/components/ActionForm";
 
 type Opt = { id: string; label: string };
 const hm = (m: number | null | undefined) => (m == null ? "—" : `${Math.floor(m / 60)} sa ${Math.round(m % 60)} dk`);
@@ -70,7 +71,7 @@ export function CrewSuggest({ ops }: { ops: { ref: string; label: string; start:
   const [end, setEnd] = useState(op?.start ? addH(op.start, 3) : "");
   return (
     <div>
-      <form action={run}>
+      <form onSubmit={submitWith(run)}>
         <div className="grid g2" style={{ gap: 8 }}>
           <div style={{ gridColumn: "span 2" }}><label>Operasyon</label><select name="opRef" value={opRef} onChange={(e) => { setOpRef(e.target.value); const o = ops.find((x) => x.ref === e.target.value); if (o?.start) { setStart(o.start); setEnd(addH(o.start, 3)); } }}>{ops.length === 0 && <option value="">Açık operasyon yok</option>}{ops.map((o) => <option key={o.ref} value={o.ref}>{o.label}</option>)}</select></div>
           <div><label>Görev başlangıcı</label><input type="datetime-local" name="start" value={start} onChange={(e) => setStart(e.target.value)} required /></div>

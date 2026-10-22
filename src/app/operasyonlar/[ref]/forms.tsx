@@ -35,18 +35,18 @@ export function BillingPartyForm({ opRef, parties }: { opRef: string; parties: {
   );
 }
 
-export function BillingDecisionForm({ opRef }: { opRef: string }) {
+export function BillingDecisionForm({ opRef, customer = false, signer }: { opRef: string; customer?: boolean; signer?: string }) {
   return (
     <ActionForm action={decideBilling} hidden={{ ref: opRef }}>
       <div className="grid g2" style={{ gap: 8 }}>
-        <div><label>Yetkili kişi</label><input name="authorizedPerson" placeholder="Ad Soyad / unvan" /></div>
-        <div style={{ display: "flex", alignItems: "flex-end" }}><label className="check"><input type="checkbox" name="taxVerified" /> Vergi kimliği doğrulandı</label></div>
+        <div><label>{customer ? "Onaylayan (ad soyad / unvan) *" : "Yetkili kişi"}</label><input name="authorizedPerson" placeholder="Ad Soyad / unvan" defaultValue={signer} /></div>
+        <div style={{ display: "flex", alignItems: "flex-end" }}><label className="check"><input type="checkbox" name="taxVerified" /> {customer ? "Vergi kimlik ve fatura bilgilerimiz doğrudur" : "Vergi kimliği doğrulandı"}</label></div>
       </div>
       <div style={{ marginTop: 8 }}><SignaturePad /></div>
       <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Onay, talepnamenin o anki sürümüne bağlanır; içerik değişirse yeni onay istenir.</div>
       <div className="toolbar" style={{ marginTop: 8 }}>
-        <SubmitButton className="btn" name="decision" value="APPROVED">Muhatap onayladı</SubmitButton>
-        <SubmitButton className="btn danger" name="decision" value="REJECTED">Reddetti</SubmitButton>
+        <SubmitButton className={customer ? "btn orange" : "btn"} name="decision" value="APPROVED">{customer ? "Fatura muhatabı olarak onaylıyorum" : "Muhatap onayladı"}</SubmitButton>
+        <SubmitButton className="btn danger" name="decision" value="REJECTED">{customer ? "Reddediyorum" : "Reddetti"}</SubmitButton>
       </div>
     </ActionForm>
   );

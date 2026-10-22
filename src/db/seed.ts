@@ -5,11 +5,14 @@ import { FLEET_SEED, OPERATION_TYPES, RULES, OPEN_ISSUES, OPERATOR, DEMO_TARIFF 
 import { KRP_PETKIM_REV4 } from "../data/tariffs/krp-petkim-rev4";
 import { REFERENCE_CASES } from "../data/reference-cases";
 import { TERMS } from "../data/terms";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { demoImo, seedDemoPeriod } from "./demo-period";
+import { CONTRACT_SEED } from "../data/contracts";
+import { hashPassword } from "../lib/password";
+import { textHash } from "../lib/contracts-hash";
 
 async function main() {
-  await db.execute(sql`TRUNCATE import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -210,6 +213,30 @@ async function main() {
     number: t.n, slug: t.slug, tr: t.tr, aliases: t.aliases, definition: t.def, source: t.source ?? null, confusedWith: t.confused ?? null,
     translations: Object.fromEntries(Object.entries(t.t).map(([k, v]) => [k, { text: v, reviewed: false }])), status: "TASLAK",
   })));
+
+  // Dijital kabul metinleri (ÖRNEK — hukuk incelemesi bekliyor)
+  await db.insert(s.contractTemplates).values(CONTRACT_SEED.map((c) => ({ code: c.code, version: 1, title: c.title, body: c.body, status: "PUBLISHED", effectiveFrom: new Date("2026-01-01T00:00:00+03:00"), isDemo: true })));
+  // Sunum kullanıcıları — şifre 123456 (canlıda DEMO_LOGINS=0 ile giriş ekranında gizlenir ve hesaplar kapatılır)
+  const pilot = people.find((p) => p.crewRole === "KILAVUZ")!;
+  const tugMaster = people.find((p) => p.crewRole === "KAPTAN" && p.tug === "Römork-1" && p.letter === "A") ?? people.find((p) => p.crewRole === "KAPTAN")!;
+  const shore = people.find((p) => p.crewRole === "KIYI_OPS")!;
+  await db.update(s.parties).set({ email: "operasyon@ornekacente.com.tr", phone: "0 212 000 00 00", taxOffice: "Kadıköy", city: "İstanbul", address: "ÖRNEK Mah. Liman Cad. No:1 Kadıköy/İstanbul" }).where(eq(s.parties.id, agent.id));
+  const pw = hashPassword("123456");
+  const demoUsers: (typeof s.users.$inferInsert)[] = [
+    { username: "admin", email: "admin@pilotis.local", name: "Sistem Yöneticisi", title: "Sistem yöneticisi", roles: ["SYSTEM_ADMIN"] },
+    { username: "yonetici", email: "yonetici@yalovapilotaj.com", name: "ÖRNEK İşletme Yöneticisi", title: "Genel müdür", roles: ["BUSINESS_MANAGER"] },
+    { username: "kaptan", email: "kaptan@yalovapilotaj.com", name: pilot.name.replace("ÖRNEK ", ""), title: "Kılavuz kaptan", roles: ["PILOT"], personnelId: pilot.id },
+    { username: "romorkor", email: "romorkor@yalovapilotaj.com", name: tugMaster.name.replace("ÖRNEK ", "").split(" · ")[0] + " · R1-A", title: "Römorkör kaptanı", roles: ["TUG_MASTER"], personnelId: tugMaster.id },
+    { username: "kiyi", email: "kiyi@yalovapilotaj.com", name: shore.name.replace("ÖRNEK ", ""), title: "Kıyı operasyon sorumlusu", roles: ["SHORE_OPS"], personnelId: shore.id },
+    { username: "musteri", email: "musteri@ornekacente.com.tr", name: "ÖRNEK Acente Yetkilisi", title: "Operasyon müdürü", roles: ["CUSTOMER", "BILLING_PARTY"], partyId: agent.id },
+    { username: "muhasebe", email: "muhasebe@yalovapilotaj.com", name: "ÖRNEK Muhasebe Sorumlusu", title: "Muhasebe şefi", roles: ["ACCOUNTING"] },
+  ].map((u) => ({ ...u, passwordHash: pw, isDemo: true }) as typeof s.users.$inferInsert);
+  await db.insert(s.users).values(demoUsers);
+  // Örnek acente çerçeve sözleşmeyi kabul etmiş olsun (beyanname iş bazında ayrıca onaylanır)
+  const [sozl] = await db.select().from(s.contractTemplates).where(eq(s.contractTemplates.code, "HIZMET_SOZLESMESI"));
+  const [odeme] = await db.select().from(s.contractTemplates).where(eq(s.contractTemplates.code, "ODEME_TAAHHUDU"));
+  const [mu] = await db.select().from(s.users).where(eq(s.users.username, "musteri"));
+  for (const t of [sozl, odeme]) await db.insert(s.contractAcceptances).values({ templateId: t.id, partyId: agent.id, userId: mu.id, signerName: mu.name, signerTitle: mu.title, textHash: textHash(t.body), method: "CLICKWRAP", acceptedAt: new Date("2026-09-01T10:00:00+03:00") });
 
   console.log("Tohumlama tamam.");
   process.exit(0);

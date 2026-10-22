@@ -3,6 +3,7 @@ import { useActionState, useDeferredValue, useMemo, useState } from "react";
 import { simulate, scenarios, teamsOf, teamDuty, validateModel, TEAM_LETTERS, type RotationModel, type TugMode, type Simulation } from "@/lib/planning/rotation";
 import { profileByCode } from "@/lib/planning/profiles";
 import { saveRotation, applyRotation, type RState } from "./actions";
+import { submitWith } from "@/components/ActionForm";
 
 const P = profileByCode("STCW_MLC");
 const DAY = 86_400_000, TZ = 3 * 3600_000;
@@ -238,7 +239,7 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
 
       {/* ───── Kaydet / uygula ───── */}
       <div className="grid g2" style={{ marginBottom: 16, alignItems: "start" }}>
-        <form action={save} className="card">
+        <form onSubmit={submitWith(save)} className="card">
           <h3>Modeli kaydet</h3>
           <input type="hidden" name="model" value={JSON.stringify(m)} />
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{savedAt ? `Son kayıt: ${savedAt}` : "Henüz kayıtlı model yok — varsayılan model gösteriliyor."} Kaydetmek yalnız operasyon/işletme yöneticisi yetkisindedir; önceki model denetim kaydında saklanır.</div>
@@ -247,7 +248,7 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
           {!canSave && <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Rolünüz modeli deneyebilir ama kaydedemez.</div>}
           {saveSt && <div role="status" className={`alert ${saveSt.ok ? "ok" : "bad"}`} style={{ marginTop: 8 }}><span>{saveSt.ok ? "✓" : "⚠"}</span><div>{saveSt.message}{saveSt.details?.map((d) => <div key={d} style={{ fontSize: 12 }}>{d}</div>)}</div></div>}
         </form>
-        <form action={apply} className="card">
+        <form onSubmit={submitWith(apply)} className="card">
           <h3>Kayıtlı modeli takvime uygula</h3>
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Ekiplere atanmış personel için vardiyalar oluşturulur. Aralıktaki eski <i>planlı</i> rotasyon kayıtları yenilenir; izin, eğitim veya ek görevle çakışan vardiya atlanır ve listelenir.</div>
           <div className="grid g2" style={{ gap: 8 }}>

@@ -5,6 +5,8 @@ import { getFxPolicy, getFxTable, RATE_TYPE_LABEL, DATE_RULE_LABEL } from "@/lib
 import { INVOICE_NOTE } from "@/data/catalog";
 import { fmtDT } from "@/lib/format";
 import { PolicyForm } from "../kurlar/forms";
+import { LeadForm } from "./portal-form";
+import { minLeadHours } from "@/lib/lead-time";
 
 export const metadata = { title: "Ayarlar" };
 
@@ -19,6 +21,10 @@ export default async function Settings() {
     <>
       <div className="pagehead"><div><h1>Ayarlar</h1><div className="muted">İşletme genelinde geçerli tercihler. Her değişiklik gerekçesi ve yapanıyla kaydedilir; kayıtlı hesaplar geriye dönük değişmez.</div></div><a className="btn secondary" href="/ayarlar/tema">🎨 Tema Stüdyosu</a></div>
       <div className="grid g2">
+        <div className="card">
+          <h2>Müşteri portalı</h2>
+          <LeadForm hours={await minLeadHours()} canEdit={["SYSTEM_ADMIN", "BUSINESS_MANAGER", "OPERATIONS_MANAGER"].includes(role)} />
+        </div>
         <div className="card">
           <h2>Döviz çevrim kuru</h2>
           <table style={{ marginBottom: 12 }}><tbody>

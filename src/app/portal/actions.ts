@@ -3,7 +3,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema as s } from "@/db";
-import { currentScope } from "@/lib/session";
+import { currentScope, currentUser } from "@/lib/session";
+import { leadTimeProblem, minLeadHours } from "@/lib/lead-time";
+import { missingForRequests, currentTemplates, textHash } from "@/lib/contracts";
+import { generateDocument } from "@/lib/docs/service";
+import { headers } from "next/headers";
 import { calculate, selectTariffVersion } from "@/lib/tariff/engine";
 import { loadTariffs, ruleStatusMap } from "@/lib/ops";
 import { getFxTable } from "@/lib/fx";
@@ -48,6 +52,8 @@ export async function estimatePackages(_: PortalState, f: FormData): Promise<Por
     const tariffs = await loadTariffs();
     const statuses = await ruleStatusMap();
     const when = istanbulDate(date);
+    const scope0 = await currentScope();
+    if (scope0.external) { const lt = leadTimeProblem(when, await minLeadHours()); if (lt) return { ok: false, message: lt }; }
     let version: ReturnType<typeof selectTariffVersion> | null = null;
     let tariffError: string | null = null;
     try { version = selectTariffVersion(tariffs, when.toISOString()); } catch (e) { tariffError = (e as Error).message; }
@@ -101,6 +107,9 @@ export async function addToCart(_: SimpleState, f: FormData): Promise<SimpleStat
     const partyId = await actingParty(f);
     const [cart] = await db.select().from(s.carts).where(and(eq(s.carts.partyId, partyId), eq(s.carts.status, "OPEN")));
     const cartId = cart?.id ?? (await db.insert(s.carts).values({ partyId }).returning())[0].id;
+    const scope = await currentScope();
+    const when = istanbulDate(String(f.get("plannedStart")));
+    if (scope.external) { const lt = leadTimeProblem(when, await minLeadHours()); if (lt) return { ok: false, message: lt }; }
     const typeCode = String(f.get("typeCode"));
     const estimate = String(f.get("estimate") || "");
     await db.insert(s.cartItems).values({
@@ -153,10 +162,30 @@ export async function submitCart(_: SimpleState, f: FormData): Promise<SimpleSta
     if (!cart) return { ok: false, message: "Açık sepet yok" };
     const items = await db.select().from(s.cartItems).where(eq(s.cartItems.cartId, cart.id)).orderBy(asc(s.cartItems.createdAt));
     if (!items.length) return { ok: false, message: "Sepet boş" };
+    // 1) Çerçeve sözleşme ve ödeme taahhüdü kabul edilmiş olmalı
+    const missing = await missingForRequests(partyId);
+    if (missing.length) return { ok: false, message: `Talep göndermeden önce şu metinleri onaylayın: ${missing.map((m) => m.title).join(", ")} (Sözleşme ve onaylar sayfası)` };
+    // 2) Asgari bildirim süresi (müşteri tarafında kesin kural)
+    if (external) {
+      const h = await minLeadHours();
+      const late = items.filter((it) => !it.operationId && leadTimeProblem(it.plannedStart, h));
+      if (late.length) return { ok: false, message: `${late.length} kalemin istenen zamanı artık ${h} saatten yakın: ${leadTimeProblem(late[0].plannedStart, h)} — kalemi çıkarıp yeni zamanla ekleyin.` };
+    }
+    // 3) Beyanname dijital onayı (her kalem için, imzalayan ve metin özetiyle)
+    const signer = String(f.get("signerName") ?? "").trim(), signerTitle = String(f.get("signerTitle") ?? "").trim();
+    if (f.get("declAccept") !== "on" || signer.length < 3) return { ok: false, message: "Beyannameyi onaylamak için ad soyad girip beyan kutusunu işaretleyin" };
+    const [beyan] = await currentTemplates(["BEYAN_TAAHHUDU"]);
+    const user = await currentUser();
+    const ua = (await headers()).get("user-agent")?.slice(0, 200) ?? null;
+    const signed = { name: signer, title: signerTitle || null, userId: user?.id ?? null, at: new Date().toISOString(), templateId: beyan?.id ?? null, textHash: beyan ? textHash(beyan.body) : null, userAgent: ua };
     for (const it of items) {
       if (it.operationId) continue; // tekrar gönderimde çoğaltma yok
+      await db.update(s.cartItems).set({ declarationSignedBy: signed }).where(eq(s.cartItems.id, it.id));
       const r = await createOperationRecord({ vesselId: it.vesselId, typeCode: it.typeCode, fromFacilityId: it.fromFacilityId, toFacilityId: it.toFacilityId, plannedStart: it.plannedStart, requesterPartyId: partyId, billingPartyId: it.billingPartyId, declaration: it.declaration as Declaration, actor: scope.role, source: `cart:${cart.id}` });
       await db.update(s.cartItems).set({ operationId: r.id }).where(eq(s.cartItems.id, it.id));
+      await db.insert(s.auditLog).values({ entity: "operation", entityId: r.ref, action: "DECLARATION_SIGNED", after: signed as object, actorId: user?.username ?? scope.role });
+      // Talepname PDF'i hemen üretilir: fatura muhatabı onayı bu sürüme bağlanır
+      try { await generateDocument(r.ref, "TALEPNAME", scope.role); } catch { /* belge üretimi talebi engellemez */ }
       refs.push(r.ref);
     }
     await db.update(s.carts).set({ status: "SUBMITTED", submittedAt: new Date() }).where(eq(s.carts.id, cart.id));

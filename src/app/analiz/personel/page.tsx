@@ -7,6 +7,7 @@ import { H } from "@/lib/analytics/core";
 import { ExportButton } from "../export-button";
 import { PersonPicker } from "../person-picker";
 import type { SP } from "@/lib/analytics/load";
+import { isPreviewing } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Analiz — personel" };
@@ -22,7 +23,7 @@ export default async function PersonnelAnalysis({ searchParams }: { searchParams
     <>
       <AnalysisHeader a={a} tab="/analiz/personel" title="Personel analizi" q={q} actions={<ExportButton tab="personel" />}
         sub="Kişi bazında planlanan ve gerçekleşen çalışma, fazla mesai, gece, hazır bulunma ve dinlenme. Görevsiz görünen süre otomatik olarak dinlenme veya verimsizlik sayılmaz." />
-      {(a.access.people === "SELF" || a.access.people === "TEAM") && <PersonPicker persons={a.ds.persons.map((p) => ({ v: p.id, l: p.name.replace("ÖRNEK ", "") }))} current={a.me} />}
+      {(a.access.people === "SELF" || a.access.people === "TEAM") && (await isPreviewing()) && <PersonPicker persons={a.ds.persons.map((p) => ({ v: p.id, l: p.name.replace("ÖRNEK ", "") }))} current={a.me} />}
       <div className="card" style={{ marginBottom: 16 }}>
         <HBars title="Gerçekleşen çalışmanın bileşimi" note="Aktif hizmet, intikal ve bekleme fiilî katılımdan; 'diğer vardiya süresi' görevde olunan fakat iş kaydı bulunmayan vardiya süresidir (hazır bekleme). Satıra tıklayınca kişi sayfası açılır."
           series={[{ name: "Aktif hizmet" }, { name: "İntikal" }, { name: "Bekleme" }, { name: "Diğer vardiya süresi" }]} unit=" sa"

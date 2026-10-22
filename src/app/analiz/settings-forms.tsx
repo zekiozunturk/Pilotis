@@ -1,11 +1,12 @@
 "use client";
 import { useActionState } from "react";
 import { saveAlertCfg, saveAllocation, type AState } from "./actions";
+import { submitWith } from "@/components/ActionForm";
 
 export function AlertCfgForm({ cfg, labels, canEdit }: { cfg: Record<string, number>; labels: Record<string, string>; canEdit: boolean }) {
   const [st, act, pending] = useActionState<AState, FormData>(saveAlertCfg, null);
   return (
-    <form action={act}>
+    <form onSubmit={submitWith(act)}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
         {Object.entries(cfg).map(([k, v]) => <div key={k}><label htmlFor={`a-${k}`}>{labels[k] ?? k}</label><input id={`a-${k}`} name={k} defaultValue={String(v)} inputMode="decimal" disabled={!canEdit} /></div>)}
       </div>
@@ -20,7 +21,7 @@ export function AllocationForm({ method, weights, version, approvedBy, note, can
   const [st, act, pending] = useActionState<AState, FormData>(saveAllocation, null);
   const L: Record<string, string> = { KAPTAN: "Kaptan", BASCARKCI: "Başçarkçı", YAGCI: "Yağcı", PIMCI: "Pimci", KILAVUZ: "Kılavuz kaptan" };
   return (
-    <form action={act}>
+    <form onSubmit={submitWith(act)}>
       <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Geçerli: sürüm {version} · {method === "WEIGHTS" ? "ağırlıklı süre" : "hizmet süresi"} · onaylayan {approvedBy} · {note}</div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
         <div><label htmlFor="al-m">Personel dağıtım yöntemi</label><select id="al-m" name="method" defaultValue={method} disabled={!canEdit}><option value="DURATION">Gerçek hizmet süresine göre</option><option value="WEIGHTS">Onaylı rol ağırlıkları × süre</option></select></div>

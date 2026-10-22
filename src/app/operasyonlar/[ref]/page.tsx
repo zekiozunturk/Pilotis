@@ -19,7 +19,8 @@ import { DOC_TYPES } from "@/lib/docs/builders";
 import { currentScope } from "@/lib/session";
 import { canSeeOperation } from "@/lib/scope";
 import { declarationImpact, type Declaration } from "@/lib/declaration";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { contractStatus } from "@/lib/contracts";
 
 export async function generateMetadata({ params }: { params: Promise<{ ref: string }> }) {
   return { title: (await params).ref };
@@ -35,6 +36,10 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
   // Başka müşterinin kaydı: varlığı dahi açığa çıkarılmaz
   if (!canSeeOperation(scope, { ...o.op, agentPartyId: o.portCall.agentPartyId })) notFound();
   const internal = !scope.external;
+  const [signedRow] = await db.select().from(s.auditLog).where(and(eq(s.auditLog.entity, "operation"), eq(s.auditLog.entityId, o.op.ref), eq(s.auditLog.action, "DECLARATION_SIGNED"))).orderBy(desc(s.auditLog.at)).limit(1);
+  const declSigned = signedRow?.after as { name: string; title: string | null; at: string; textHash: string | null } | undefined;
+  const requesterContracts = o.op.requesterPartyId ? await contractStatus(o.op.requesterPartyId, ["HIZMET_SOZLESMESI", "ODEME_TAAHHUDU"]) : null;
+  const requesterStatus = o.op.requesterPartyId ? (await db.select({ st: s.parties.registrationStatus }).from(s.parties).where(eq(s.parties.id, o.op.requesterPartyId)))[0]?.st : null;
   const docRows = await db.select().from(s.documentVersions).where(eq(s.documentVersions.operationId, o.op.id)).orderBy(desc(s.documentVersions.createdAt));
   const approvals = docRows.length ? await db.select().from(s.documentApprovals).where(inArray(s.documentApprovals.documentVersionId, docRows.map((d) => d.id))) : [];
   const docs: DocRow[] = docRows.map((d) => ({ id: d.id, docType: d.docType, version: d.version, fileName: d.fileName, sha256: d.sha256, origin: d.origin, signature: d.signature, signedBy: d.signedBy, createdAt: d.createdAt.toISOString(), sizeBytes: d.sizeBytes,
@@ -98,6 +103,8 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
 
           <div className="card">
             <h2>Gemi ve beyan</h2>
+            {declSigned && <div className="alert ok" style={{ marginBottom: 8 }}><span>✍</span><div><b>Beyanname dijital olarak onaylandı</b>{declSigned.name}{declSigned.title ? `, ${declSigned.title}` : ""} · {fmtDT(declSigned.at)}{declSigned.textHash ? <> · metin özeti <span className="mono small">{declSigned.textHash.slice(0, 12)}…</span></> : null}</div></div>}
+            {internal && requesterContracts && requesterContracts.length > 0 && <div className="small muted" style={{ marginBottom: 8 }}>Talep eden firma: {requesterContracts.map((c) => <span key={c.template.code} className={`badge ${c.acceptance ? "ok" : "warn"}`} style={{ marginRight: 4 }}>{c.template.code === "HIZMET_SOZLESMESI" ? "Hizmet sözleşmesi" : "Ödeme taahhüdü"} {c.acceptance ? "✓" : "yok"}</span>)}{requesterStatus === "PENDING_REVIEW" && <span className="badge warn">Cari doğrulama bekliyor</span>}</div>}
             <table><tbody>
               <tr><td className="muted">IMO / bayrak / tip</td><td>{o.vessel.imo ?? o.vessel.altOfficialId ?? "—"} · {o.vessel.flag ?? "—"} · {o.vessel.vesselType ?? "—"}</td></tr>
               <tr><td className="muted">Kayıtlı GT / NT / DWT</td><td>{fmtNum(o.vessel.gt)} / {fmtNum(o.vessel.nt)} / {fmtNum(o.vessel.dwt)}</td></tr>
@@ -154,7 +161,7 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
           </div>}
 
           <div className="card">
-            <h2>Olay zaman çizelgesi</h2>
+            <h2 id="olaylar">Olay zaman çizelgesi</h2>
             <ul className="timeline">
               {o.events.map((e) => (
                 <li key={e.id}>

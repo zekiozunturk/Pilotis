@@ -63,8 +63,58 @@ export const users = pgTable("users", {
   personnelId: text("personnel_id").unique().references(() => personnel.id),
   active: boolean("active").default(true).notNull(),
   mfaEnabled: boolean("mfa_enabled").default(false).notNull(),
+  username: text("username").unique(),         // giriş adı (küçük harf)
+  passwordHash: text("password_hash"),         // scrypt$N$tuz$özet — düz şifre asla saklanmaz
+  title: text("title"),                        // unvan / görev (onaylarda görünür)
+  phone: text("phone"),
+  failedLogins: integer("failed_logins").default(0).notNull(),
+  lockedUntil: ts("locked_until"),
+  lastLoginAt: ts("last_login_at"),
+  mustChangePassword: boolean("must_change_password").default(false).notNull(),
+  isDemo: boolean("is_demo").default(false).notNull(),
   createdAt: createdAt(), updatedAt: updatedAt(),
 });
+
+/** Oturumlar — çerezde rastgele belirteç, veritabanında yalnız özeti tutulur */
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),                 // sha256(belirteç)
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+  expiresAt: ts("expires_at").notNull(),
+  lastSeenAt: ts("last_seen_at").defaultNow().notNull(),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+}, (t) => [index("sess_user_idx").on(t.userId)]);
+
+/** Dijital olarak kabul edilen metinler: hizmet sözleşmesi, KVKK aydınlatma vb. — sürümlü, yayınlanan sürüm değişmez */
+export const contractTemplates = pgTable("contract_templates", {
+  id: id(),
+  code: text("code").notNull(),                // HIZMET_SOZLESMESI, KVKK_AYDINLATMA, BEYAN_TAAHHUDU
+  version: integer("version").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),                // düz metin / basit işaretleme
+  status: text("status").default("DRAFT").notNull(), // DRAFT | PUBLISHED | RETIRED
+  effectiveFrom: ts("effective_from"),
+  legalReviewed: boolean("legal_reviewed").default(false).notNull(),
+  isDemo: boolean("is_demo").default(false).notNull(),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("ctpl_code_ver").on(t.code, t.version)]);
+
+export const contractAcceptances = pgTable("contract_acceptances", {
+  id: id(),
+  templateId: text("template_id").notNull().references(() => contractTemplates.id),
+  partyId: text("party_id").notNull().references(() => parties.id),
+  userId: text("user_id").references(() => users.id),
+  signerName: text("signer_name").notNull(),
+  signerTitle: text("signer_title"),
+  textHash: text("text_hash").notNull(),       // kabul edilen metnin sha256 özeti
+  method: text("method").default("CLICKWRAP").notNull(), // CLICKWRAP | DRAWN | E_SIGNATURE | WET_UPLOADED
+  signatureImageKey: text("signature_image_key"),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  acceptedAt: ts("accepted_at").defaultNow().notNull(),
+  revokedAt: ts("revoked_at"),
+}, (t) => [index("cacc_party_idx").on(t.partyId)]);
 
 export const auditLog = pgTable("audit_log", {
   id: id(),
@@ -93,6 +143,7 @@ export const parties = pgTable("parties", {
   phone: text("phone"),
   email: text("email"),
   website: text("website"),
+  registrationStatus: text("registration_status").default("ACTIVE").notNull(), // ACTIVE | PENDING_REVIEW (portaldan kendi kaydı) | SUSPENDED
   isDemo: boolean("is_demo").default(false).notNull(),
   version: integer("version").default(1).notNull(),
   createdAt: createdAt(), updatedAt: updatedAt(),
@@ -481,6 +532,7 @@ export const cartItems = pgTable("cart_items", {
   declaration: jsonb("declaration").notNull(),
   billingPartyId: text("billing_party_id").references(() => parties.id),
   estimate: jsonb("estimate"),
+  declarationSignedBy: jsonb("declaration_signed_by"), // { name, title, userId, at, textHash } — beyannamenin dijital onayı
   operationId: text("operation_id").references(() => operations.id),
   createdAt: createdAt(),
 });
