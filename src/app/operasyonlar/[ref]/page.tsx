@@ -27,8 +27,6 @@ export async function generateMetadata({ params }: { params: Promise<{ ref: stri
 
 const LAYER: Record<string, string> = { CUSTOMER_DECLARED: "Müşteri beyanı", FIELD_VERIFIED: "Saha doğrulaması", APPROVED_FINAL: "Onaylı son durum" };
 
-export async function generateMetadata({ params }: { params: Promise<{ ref: string }> }) { return { title: (await params).ref }; }
-
 export default async function OperationDetail({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
   const o = await loadOperation(ref);
