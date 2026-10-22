@@ -1,3 +1,4 @@
+import { DEFAULT_ROTATION, teamsOf, rotationShifts } from "../lib/planning/rotation";
 import "dotenv/config";
 import { db, schema as s } from "./index";
 import { FLEET_SEED, OPERATION_TYPES, RULES, OPEN_ISSUES, OPERATOR, DEMO_TARIFF } from "../data/catalog";
@@ -136,20 +137,28 @@ async function main() {
   });
 
   // ───── Örnek personel ve vardiyalar (AK-09 gelene kadar; isDemo) ─────
-  const tugsAll = (await db.select().from(s.fleetAssets)).filter((a) => a.type === "TUG").sort((a, b) => a.name.localeCompare(b.name));
-  const ROLES: [string, string][] = [["KAPTAN", "Römorkör Kaptanı"], ["BASCARKCI", "Başçarkçı"], ["YAGCI", "Yağcı"], ["PIMCI", "Pimci"]];
-  const people: { id: string; crewRole: string; tug?: string; name: string }[] = [];
-  for (const t of tugsAll) for (const [cr, title] of ROLES) {
-    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${title} · ${t.name}`, title, unit: `${t.name} ekibi`, crewRole: cr, homeAssetId: t.id, workProfile: "STCW_MLC", isDemo: true }).returning();
-    people.push({ id: p.id, crewRole: cr, tug: t.name, name: p.fullName });
+  // İşletme beyanı (22.10.2026): 7 römorkör (5 gündüz, 2 gece), römorkörde 4 kişi, 1 hafta her gün 14 saat görev + 1 hafta izin.
+  const rot = DEFAULT_ROTATION;
+  await db.insert(s.appSettings).values({ key: "planning.rotation", value: rot, updatedBy: "seed" });
+  await db.insert(s.auditLog).values({ entity: "setting", entityId: "planning.rotation", action: "CREATE", after: rot as unknown as object, actorId: "seed", reason: "İşletme beyanı: 1 hafta × 14 saat görev / 1 hafta izin; 5 gündüz + 2 gece römorkör; römorkörde 4 kişi" });
+  const tugAssets = new Map((await db.select().from(s.fleetAssets)).map((a) => [a.name, a.id]));
+  const people: { id: string; crewRole: string; tug?: string; team?: string; letter?: string; name: string; rotationTeam: string | null }[] = [];
+  for (const t of teamsOf(rot)) for (const r of rot.roles) {
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${r.label} · ${t.tugName.replace(" (ad girilecek)", "")} · ${t.letter}`, title: r.label, unit: `${t.tugName.replace(" (ad girilecek)", "")} ekipleri`, crewRole: r.code, homeAssetId: tugAssets.get(t.tugName) ?? null, workProfile: "STCW_MLC", rotationTeam: t.key, isDemo: true }).returning();
+    people.push({ id: p.id, crewRole: r.code, tug: t.tugName, letter: t.letter, name: p.fullName, rotationTeam: t.key });
+  }
+  // Yedek havuzu (ekibe atanmamış) — 2 kişi örnek
+  for (const [cr, title] of [["KAPTAN", "Römorkör Kaptanı"], ["PIMCI", "Pimci"]] as const) {
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${title} · Yedek`, title, unit: "Yedek havuzu", crewRole: cr, workProfile: "STCW_MLC", isDemo: true }).returning();
+    people.push({ id: p.id, crewRole: cr, name: p.fullName, rotationTeam: null });
   }
   for (let i = 1; i <= 3; i++) {
     const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK Kılavuz Kaptan ${i}`, title: "Kılavuz Kaptan", unit: "Kılavuzluk", crewRole: "KILAVUZ", workProfile: "STCW_MLC", isDemo: true }).returning();
-    people.push({ id: p.id, crewRole: "KILAVUZ", name: p.fullName });
+    people.push({ id: p.id, crewRole: "KILAVUZ", name: p.fullName, rotationTeam: null });
   }
   for (let i = 1; i <= 2; i++) {
     const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK Kıyı Operasyon ${i}`, title: "Kıyı Operasyon Sorumlusu", unit: "Operasyon", crewRole: "KIYI_OPS", workProfile: "IS_KANUNU", isDemo: true }).returning();
-    people.push({ id: p.id, crewRole: "KIYI_OPS", name: p.fullName });
+    people.push({ id: p.id, crewRole: "KIYI_OPS", name: p.fullName, rotationTeam: null });
   }
   // Yeterlik belgeleri — biri süresi dolmuş, biri yakında dolacak (planlama kontrolü örneği)
   for (const [i, p] of people.entries()) {
@@ -157,31 +166,30 @@ async function main() {
     await db.insert(s.certificates).values({ personnelId: p.id, name: p.crewRole === "KILAVUZ" ? "Kılavuz kaptan yetki belgesi" : p.crewRole === "KIYI_OPS" ? "İSG eğitimi" : "Gemiadamı yeterlik belgesi", number: `ÖRNEK-${1000 + i}`, issuedAt: new Date("2022-01-01"), expiresAt: new Date(`${exp}T23:59:59+03:00`) });
   }
   const tr = (d: string, h: string) => new Date(`${d}T${h}:00+03:00`);
-  const days = ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"];
-  const next = (d: string) => days[days.indexOf(d) + 1] ?? "2026-10-26";
+  const cutoff = new Date("2026-10-22T12:00:00+03:00");
   const rows: (typeof s.shifts.$inferInsert)[] = [];
-  const add = (pid: string, cat: "WORK" | "STANDBY" | "TRAINING" | "LEAVE", a: Date, b: Date, note?: string) => rows.push({ personnelId: pid, category: cat, status: a < new Date("2026-10-22T12:00:00+03:00") ? "CONFIRMED" : "PLANNED", startAt: a, endAt: b, note, createdBy: "seed", isDemo: true });
-  people.forEach((p, i) => {
+  const add = (pid: string, cat: "WORK" | "STANDBY" | "TRAINING" | "LEAVE", a: Date, b: Date, note?: string, assetId?: string | null) => rows.push({ personnelId: pid, category: cat, status: a < cutoff ? "CONFIRMED" : "PLANNED", startAt: a, endAt: b, note, assetId: assetId ?? null, createdBy: "seed", isDemo: true });
+  // Rotasyon vardiyaları (takvime uygula ile aynı üretici) — 05.10–09.11
+  for (const r of rotationShifts(rot, people, tr("2026-10-05", "00:00").getTime(), tr("2026-11-09", "00:00").getTime())) add(r.personnelId, "WORK", new Date(r.start), new Date(r.end), r.note, tugAssets.get(r.tugName));
+  // Kılavuz kaptan ve kıyı personeli (rotasyon dışı)
+  const days = Array.from({ length: 28 }, (_, i) => new Date(Date.UTC(2026, 9, 12 + i)).toISOString().slice(0, 10));
+  const next = (d: string) => new Date(new Date(`${d}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
+  people.filter((p) => p.crewRole === "KILAVUZ" || p.crewRole === "KIYI_OPS").forEach((p, i) => {
     days.forEach((d, di) => {
       const dow = di % 7; // 0 = pazartesi
       if (p.crewRole === "KIYI_OPS") { if (dow < 5 || (i % 2 === 0 && dow === 5)) add(p.id, "WORK", tr(d, "08:00"), tr(d, "17:00")); return; }
-      if (p.crewRole === "KILAVUZ") { if ((di + i) % 2 === 0) add(p.id, "WORK", tr(d, "07:00"), tr(d, "19:00")); else if ((di + i) % 4 === 1) add(p.id, "STANDBY", tr(d, "19:00"), tr(next(d), "07:00"), "Gece hazır bulunma"); return; }
-      const tugIdx = tugsAll.findIndex((t) => t.name === p.tug);
-      if (tugIdx < 2) { if (dow < 6) add(p.id, "WORK", tr(d, "08:00"), tr(d, "18:00")); }              // Yalova 2-3: gündüz ekibi
-      else if ((di + tugIdx) % 2 === 0) add(p.id, "WORK", tr(d, "20:00"), tr(next(d), "06:00"));        // Yalova 4-5: gece ekibi, gün aşırı
+      if ((di + i) % 2 === 0) add(p.id, "WORK", tr(d, "07:00"), tr(d, "19:00")); else if ((di + i) % 4 === 1) add(p.id, "STANDBY", tr(d, "19:00"), tr(next(d), "07:00"), "Gece hazır bulunma");
     });
   });
-  // Bilinçli ihlal örneği: Yalova 5 kaptanı gece görevinden çıkıp aynı sabah gündüz vardiyasına yazılmış
-  const y5k = people.find((p) => p.tug === "Yalova 5" && p.crewRole === "KAPTAN")!;
-  add(y5k.id, "WORK", tr("2026-10-23", "08:00"), tr("2026-10-23", "16:00"), "Ek görev (örnek ihlal)");
-  // Eğitim ve izin örnekleri
-  const y2y = people.find((p) => p.tug === "Yalova 2" && p.crewRole === "YAGCI")!;
-  add(y2y.id, "TRAINING", tr("2026-10-24", "09:00"), tr("2026-10-24", "13:00"), "Yangın tatbikatı");
-  const y3p = people.find((p) => p.tug === "Yalova 3" && p.crewRole === "PIMCI")!;
-  const leaveRows = rows.filter((r) => r.personnelId === y3p.id && r.startAt >= tr("2026-10-22", "00:00") && r.startAt < tr("2026-10-24", "00:00"));
-  for (const r of leaveRows) rows.splice(rows.indexOf(r), 1);
+  const pick = (tug: string, letter: string, cr: string) => people.find((p) => p.tug === tug && p.letter === letter && p.crewRole === cr)!;
+  // Bilinçli ihlal örneği: Yalova 5 (gece) B ekibi kaptanı gece görevinden çıkıp aynı sabah ek göreve yazılmış
+  add(pick("Yalova 5", "B", "KAPTAN").id, "WORK", tr("2026-10-23", "08:00"), tr("2026-10-23", "16:00"), "Ek görev (örnek ihlal)");
+  // Eğitim (izin haftasındaki A ekibinden) ve yıllık izin (görevdeki B ekibinden) örnekleri
+  add(pick("Yalova 2", "A", "YAGCI").id, "TRAINING", tr("2026-10-24", "09:00"), tr("2026-10-24", "13:00"), "Yangın tatbikatı");
+  const y3p = pick("Yalova 3", "B", "PIMCI");
+  for (const r of rows.filter((r) => r.personnelId === y3p.id && r.startAt >= tr("2026-10-22", "00:00") && r.startAt < tr("2026-10-24", "00:00"))) rows.splice(rows.indexOf(r), 1);
   add(y3p.id, "LEAVE", tr("2026-10-22", "00:00"), tr("2026-10-24", "00:00"), "Yıllık izin");
-  await db.insert(s.shifts).values(rows);
+  for (let i = 0; i < rows.length; i += 500) await db.insert(s.shifts).values(rows.slice(i, i + 500));
 
   // Terminoloji
   await db.insert(s.terms).values(TERMS.map((t) => ({

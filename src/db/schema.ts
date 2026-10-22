@@ -276,6 +276,7 @@ export const personnel = pgTable("personnel", {
   workProfile: text("work_profile").default("STCW_MLC").notNull(), // çalışma/dinlenme kural profili
   crewRole: text("crew_role"), // KAPTAN, BASCARKCI, YAGCI, PIMCI, KILAVUZ, KIYI_OPS
   homeAssetId: text("home_asset_id"),
+  rotationTeam: text("rotation_team"), // rotasyon ekip yuvası, ör. "T1-A" (planning.rotation modelindeki römorkör kimliği + ekip harfi)
   createdAt: createdAt(), updatedAt: updatedAt(),
 });
 

@@ -151,3 +151,13 @@ describe("İş akışı yetkileri", () => {
     expect(canTransition(OP_STATUS_TRANSITIONS, "READY", "CANCELLED", ["OPERATIONS_MANAGER"]).ok).toBe(false);
   });
 });
+
+describe("Emniyet römorkörü (R-032)", () => {
+  it("tarifede kalemi yoksa tarife dışı özel iş olarak işaretlenir, sıfır fiyat üretilmez", async () => {
+    const { resolveService } = await import("@/lib/tariff/engine");
+    const r = resolveService({ id: "x", label: "x", currency: "TRY", definition: { services: {} } } as never, "STANDBY_TUG");
+    expect(r.svc).toBeUndefined();
+    expect(r.error).toMatch(/tarife dışı özel iş/);
+    expect(r.error).toMatch(/R-032/);
+  });
+});

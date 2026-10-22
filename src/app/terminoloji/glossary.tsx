@@ -1,6 +1,6 @@
 "use client";
-import { useMemo, useState, useActionState, Fragment } from "react";
-import { reviewTranslation, addTerm, type TState } from "./actions";
+import { useMemo, useState, useActionState, useEffect, Fragment } from "react";
+import { reviewTranslation, addTerm, editTerm, type TState } from "./actions";
 import { LANGS } from "@/data/terms";
 
 type T = { n: number; slug: string; tr: string; aliases: string[]; definition: string; source: string | null; confused: string | null; status: string; version: number; translations: Record<string, { text: string; reviewed: boolean; reviewer?: string }> };
@@ -26,10 +26,35 @@ function Review({ n, lang, text }: { n: number; lang: string; text: string }) {
   );
 }
 
-export function Glossary({ terms }: { terms: T[] }) {
+function Edit({ t }: { t: T }) {
+  const [st, act, pending] = useActionState<TState, FormData>(editTerm, null);
+  return (
+    <details style={{ marginTop: 4 }}>
+      <summary style={{ cursor: "pointer", fontSize: 11.5, color: "var(--navy-700)" }}>✎ düzenle (v{t.version})</summary>
+      <form action={act} style={{ marginTop: 6, display: "grid", gap: 6, background: "var(--bg)", padding: 8, borderRadius: 8 }}>
+        <input type="hidden" name="n" value={t.n} />
+        <div><label>Türkçe terim *</label><input name="tr" defaultValue={t.tr} required /></div>
+        <div><label>İşletme karşılıkları (virgülle)</label><input name="aliases" defaultValue={t.aliases.join(", ")} /></div>
+        <div><label>Tanım *</label><textarea name="definition" defaultValue={t.definition} rows={3} required /></div>
+        <div><label>Kaynak</label><input name="source" defaultValue={t.source ?? ""} /></div>
+        <div><label>Karıştırılan (#no ile)</label><input name="confused" defaultValue={t.confused ?? ""} /></div>
+        {LANGS.filter((l) => l.code !== "tr").map((l) => <div key={l.code}><label>{l.label}{t.translations[l.code]?.reviewed ? " (onaylı — değişirse onay düşer)" : " (taslak)"}</label><input name={`t_${l.code}`} dir={l.dir} defaultValue={t.translations[l.code]?.text ?? ""} /></div>)}
+        <div><label>Değişiklik notu *</label><input name="changeNote" placeholder="ör. İşletme tanımına göre düzeltildi" required /></div>
+        <button className="btn secondary" disabled={pending}>Kaydet</button>
+        {st && <span role="status" style={{ fontSize: 11.5, color: st.ok ? "var(--ok)" : "var(--bad)" }}>{st.message}</span>}
+      </form>
+    </details>
+  );
+}
+
+export function Glossary({ terms, canEdit }: { terms: T[]; canEdit: boolean }) {
   const [q, setQ] = useState("");
   const [langs, setLangs] = useState<string[]>(["en", "de", "it", "nb", "ar"]);
   const [st, add, adding] = useActionState<TState, FormData>(addTerm, null);
+  useEffect(() => {
+    const f = () => { if (window.location.hash === "#yeni-terim") { const d = document.getElementById("yeni-terim") as HTMLDetailsElement | null; if (d) { d.open = true; d.querySelector("input")?.focus(); } } };
+    f(); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f);
+  }, []);
   const shown = useMemo(() => {
     const k = q.trim().toLocaleLowerCase("tr");
     if (!k) return terms;
@@ -37,6 +62,24 @@ export function Glossary({ terms }: { terms: T[] }) {
   }, [q, terms]);
   return (
     <>
+      {canEdit ? (
+      <details className="card" id="yeni-terim" style={{ marginBottom: 12, borderColor: "var(--orange)" }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700, color: "var(--orange)" }}>+ Yeni terim ekle (elle)</summary>
+        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Numara otomatik ve kalıcı verilir. Çeviriler taslak olarak kaydedilir; onay için kontrol eden kişinin adı gerekir.</div>
+        <form action={add} style={{ marginTop: 10 }}>
+          <div className="grid g3" style={{ gap: 8 }}>
+            <div><label>Türkçe terim *</label><input name="tr" required /></div>
+            <div><label>İşletme karşılıkları (virgülle)</label><input name="aliases" /></div>
+            <div><label>Kaynak</label><input name="source" /></div>
+            <div style={{ gridColumn: "span 2" }}><label>Tanım *</label><input name="definition" required /></div>
+            <div><label>Karıştırılan (#no ile)</label><input name="confused" placeholder="ör. Römorkörcülük (#3)" /></div>
+            {LANGS.filter((l) => l.code !== "tr").map((l) => <div key={l.code}><label>{l.label} (taslak)</label><input name={l.code} dir={l.dir} /></div>)}
+          </div>
+          <button className="btn" style={{ marginTop: 8 }} disabled={adding}>Ekle</button>
+          {st && <span role="status" style={{ marginLeft: 10, fontSize: 12, color: st.ok ? "var(--ok)" : "var(--bad)" }}>{st.message}</span>}
+        </form>
+      </details>
+      ) : <div className="alert info" style={{ marginBottom: 12 }}><span>ⓘ</span><div>Terim eklemek veya düzenlemek için tarife/mevzuat sorumlusu, operasyon ya da işletme yöneticisi rolü gerekir.</div></div>}
       <div className="card" style={{ marginBottom: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <div style={{ flex: "1 1 260px" }}><label>Ara (terim, karşılık, tanım, çeviri, numara)</label><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ör. palamar, tug, Schlepper, 13" /></div>
         <div><label>Gösterilen diller</label>
@@ -55,6 +98,7 @@ export function Glossary({ terms }: { terms: T[] }) {
                 <div style={{ marginTop: 2 }}>{t.definition}</div>
                 {t.confused && <div style={{ fontSize: 11.5, marginTop: 2 }}><span className="badge warn">Karıştırılmamalı</span> <Confused text={t.confused} /></div>}
                 {t.source && <div className="muted" style={{ fontSize: 11 }}>Kaynak: {t.source}</div>}
+                {canEdit && <Edit t={t} />}
               </td>
               {LANGS.filter((l) => langs.includes(l.code)).map((l) => {
                 const x = t.translations[l.code];
@@ -67,21 +111,6 @@ export function Glossary({ terms }: { terms: T[] }) {
           ))}</tbody>
         </table>
       </div>
-      <details className="card" style={{ marginTop: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 700 }}>+ Yeni terim ekle</summary>
-        <form action={add} style={{ marginTop: 10 }}>
-          <div className="grid g3" style={{ gap: 8 }}>
-            <div><label>Türkçe terim *</label><input name="tr" required /></div>
-            <div><label>İşletme karşılıkları (virgülle)</label><input name="aliases" /></div>
-            <div><label>Kaynak</label><input name="source" /></div>
-            <div style={{ gridColumn: "span 2" }}><label>Tanım *</label><input name="definition" required /></div>
-            <div><label>Karıştırılan (#no ile)</label><input name="confused" placeholder="ör. Römorkörcülük (#3)" /></div>
-            {LANGS.filter((l) => l.code !== "tr").map((l) => <div key={l.code}><label>{l.label} (taslak)</label><input name={l.code} dir={l.dir} /></div>)}
-          </div>
-          <button className="btn" style={{ marginTop: 8 }} disabled={adding}>Ekle</button>
-          {st && <span style={{ marginLeft: 10, fontSize: 12, color: st.ok ? "var(--ok)" : "var(--bad)" }}>{st.message}</span>}
-        </form>
-      </details>
     </>
   );
 }

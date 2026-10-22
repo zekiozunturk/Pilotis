@@ -9,12 +9,13 @@ export interface ProfileDef extends RestProfile { basis: string; status: "SOURCE
 export const PROFILES: ProfileDef[] = [
   {
     code: "STCW_MLC", name: "Gemiadamı dinlenme (STCW A-VIII/1 · MLC 2006 Std. A2.3)",
-    basis: "STCW Kod A-VIII/1 md.2–3; MLC 2006 Standart A2.3 (5)–(6)", status: "EXPERT_REVIEW",
-    note: "Liman içi römorkör/kılavuz botu personeline uygulanabilirliği ve Deniz İş Kanunu (854) ile ilişkisi doğrulanacak",
+    basis: "STCW Kod A-VIII/1 md.2–3; MLC 2006 Standart A2.3 (5)–(6) (24 saatte ≥10, 7 günde ≥77 saat dinlenme); 854 s. Deniz İş Kanunu — ÇSGB SSS: haftalık 48 saat, aşan fazla çalışma; liman hizmetinde haftada 6 günden fazla çalıştırılamaz, hafta tatilinde çalışılırsa münavebeyle başka gün verilir", status: "EXPERT_REVIEW",
+    note: "Liman içi römorkör/kılavuz botu personeline uygulanabilirliği ve 854 ile ilişkisi hukuk onayına bağlı (R-030). Ardışık gün sınırı, münavebeyle telafi mümkün olduğundan uyarı düzeyindedir",
     minRest24h: 10 * 60, minRest7d: 77 * 60, maxRestPeriods24h: 2, minLongestRest24h: 6 * 60, maxContinuousWork: 14 * 60,
     maxWork24h: null, minContinuousRest7d: null, weeklyNormal: 48 * 60, weeklyMax: null,
     nightStartHour: 20, nightEndHour: 6, maxNightWork: null, nightShiftMinMinutes: 180,
     standbyCountsAsWork: true, trainingCountsAsWork: true, minRestBlock: 60,
+    maxConsecutiveDutyDays: 6, consecutiveDaysSeverity: "WARNING",
   },
   {
     code: "IS_KANUNU", name: "Kara personeli (4857 İş Kanunu)",

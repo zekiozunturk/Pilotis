@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { validatePriceList, evaluateItem, type PriceItem, type FxTable } from "@/lib/pricing/pricelist";
 import { VARIABLES } from "@/lib/pricing/formula";
 
-const SERVICES: [string, string][] = [["", "— (bağlı değil)"], ["PILOTAGE", "Kılavuzluk"], ["TOWAGE", "Römorkör"], ["MOORING", "Palamar bağlama"], ["UNMOORING", "Palamar çözme"], ["STANDBY_TUG", "Standby römorkör"]];
+const SERVICES: [string, string][] = [["", "— (bağlı değil)"], ["PILOTAGE", "Kılavuzluk"], ["TOWAGE", "Römorkör"], ["MOORING", "Palamar bağlama"], ["UNMOORING", "Palamar çözme"], ["STANDBY_TUG", "Emniyet römorkörü"]];
 const fmt = (v: string, c: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: c, maximumFractionDigits: 4 }).format(Number(v));
 
 function nextCode(items: PriceItem[], group?: string): string {

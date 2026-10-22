@@ -52,7 +52,7 @@ export const OPERATION_TYPES: { code: string; nameTr: string; nameEn: string; ki
   { code: "OP-009", nameTr: "Demirden kaldırma", nameEn: "Heaving anchor", kinds: ["PILOTAGE"], families: ["MINISTRY"], unit: "Manevra" },
   { code: "OP-010", nameTr: "Kendinden hareket edemeyen geminin çekilmesi", nameEn: "Dead-ship tow", kinds: ["TOWAGE", "PILOTAGE"], families: ["MINISTRY"], unit: "Saat" },
   { code: "OP-011", nameTr: "Refakat", nameEn: "Escort", kinds: ["TOWAGE"], families: ["MINISTRY"], unit: "Saat" },
-  { code: "OP-012", nameTr: "Emniyet amacıyla hazır bekleme", nameEn: "Safety standby", kinds: ["STANDBY_TUG"], families: ["MINISTRY", "CHARTER"], unit: "Saat" },
+  { code: "OP-012", nameTr: "Emniyet römorkörü (tarife dışı özel iş)", nameEn: "Safety standby tug (special job)", kinds: ["STANDBY_TUG"], families: ["SPECIAL_CONTRACT"], unit: "Saat" },
   { code: "OP-013", nameTr: "Ağır hava nedeniyle müdahale", nameEn: "Heavy weather assistance", kinds: ["TOWAGE"], families: ["MINISTRY", "KEGM"], unit: "Saat" },
   { code: "OP-014", nameTr: "Sürüklenen / kontrolünü kaybetmiş gemiye müdahale", nameEn: "Drifting vessel response", kinds: ["TOWAGE", "SALVAGE_REVIEW"], families: ["KEGM", "SALVAGE"], unit: "Saat" },
   { code: "OP-015", nameTr: "Yetkili makam görevlendirmesi", nameEn: "Authority-ordered task", kinds: ["TOWAGE"], families: ["KEGM"], unit: "Saat" },
@@ -95,6 +95,8 @@ export const RULES: { code: string; title: string; label: "REGULATION" | "CONTRA
   { code: "R-028", title: "Ücretler USD; her yıl 1 Şubat'tan itibaren ABD TÜFE oranında güncellenir; negatifse önceki ücret", label: "REGULATION", status: "SOURCE_FOUND", basis: "KRP Yönergesi md. 5(1)(b)", modules: ["Tarife"] },
   { code: "R-029", title: "Hazır bulunma (nöbet) dinlenme hesabında çalışma sayılır", label: "OPERATING_PRACTICE", status: "DRAFT", basis: "İşletme kararı bekleniyor; STCW/MLC ve İş Kanunu yorumu", modules: ["Planlama"] },
   { code: "R-030", title: "Römorkör/kılavuz personeline STCW/MLC, kara personeline İş Kanunu profili uygulanır", label: "OPERATING_PRACTICE", status: "DRAFT", basis: "Uygulanabilirlik hukuk/İSG görüşüyle doğrulanacak", modules: ["Planlama", "Personel"] },
+  { code: "R-032", title: "Emniyet römorkörü azami ücret tarifesinde yoktur; tarife dışı özel iş olarak teklif/sözleşmeyle fiyatlanır (kıyı tesisinin kendi tarifesi varsa o uygulanır)", label: "OPERATING_PRACTICE", status: "DRAFT", basis: "İşletme beyanı 22.10.2026; UAB azami ücret tablosunda kalem bulunmaması", modules: ["Tarife", "Teklif"] },
+  { code: "R-033", title: "Rotasyon modeli (görev/izin günü, günlük süre, gündüz/gece römorkör sayısı) yalnız yetkiliyle değiştirilir; dinlenme ihlali içeren model takvime gerekçeli risk kabulüyle uygulanır", label: "OPERATING_PRACTICE", status: "DRAFT", basis: "PILOTIS planlama; STCW A-VIII/1; 854 s. Deniz İş Kanunu", modules: ["Planlama"] },
   { code: "R-031", title: "Kural ihlaliyle plan yalnız yetkili acil durum istisnasıyla kaydedilir; telafi planı zorunlu", label: "OPERATING_PRACTICE", status: "APPROVED", basis: "PILOTIS şartnamesi §13–14", modules: ["Planlama"] },
   { code: "R-020", title: "Dinlenme kontrolü kayan zaman penceresiyle", label: "INTL_GOOD_PRACTICE", status: "EXPERT_REVIEW", basis: "STCW A-VIII/1 (uygulanabilirlik doğrulanacak)", modules: ["Personel", "Planlama"] },
 ];
@@ -172,7 +174,7 @@ export const ASSET_LABELS: Record<string, string> = {
   TUG: "Römorkör", PILOT_BOAT: "Kılavuz botu", MOORING_BOAT: "Palamar botu", SURFACE_CLEANING_VESSEL: "Deniz yüzeyi temizleme", LAND_VEHICLE: "Kara aracı", EQUIPMENT: "Ekipman",
 };
 export const SERVICE_LABELS: Record<string, string> = {
-  PILOTAGE: "Kılavuzluk", TOWAGE: "Römorkörcülük", MOORING: "Palamar bağlama", UNMOORING: "Palamar çözme", LINE_HANDLING: "Halat", CHARTER: "Kiralama", SALVAGE_REVIEW: "Kurtarma değ.", SPECIAL: "Özel hizmet", STANDBY_TUG: "Standby römorkör",
+  PILOTAGE: "Kılavuzluk", TOWAGE: "Römorkörcülük", MOORING: "Palamar bağlama", UNMOORING: "Palamar çözme", LINE_HANDLING: "Halat", CHARTER: "Kiralama", SALVAGE_REVIEW: "Kurtarma değ.", SPECIAL: "Özel hizmet", STANDBY_TUG: "Emniyet römorkörü",
 };
 
 /** Portal paket kartları — kapsam metinleri işletme onayına tabidir (AK-04). */

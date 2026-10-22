@@ -71,6 +71,10 @@ export function hashInputs(input: CalcInput, versionId: string): string {
 }
 
 /** Hizmet tarifesini çözer: kategorili sürümde kategori zorunlu. */
+const notDefined = (kind: string) => kind === "STANDBY_TUG"
+  ? "Emniyet römorkörü bu tarifede yok — tarife dışı özel iş: teklif/sözleşme fiyatı girilmeli (R-032)"
+  : `Bu tarife sürümünde ${kind} hizmeti tanımlı değil`;
+
 export function resolveService(version: TariffVersionInput, kind: string, category?: string | null): { svc?: ServiceTariff; categoryLabel?: string; error?: string } {
   const def = version.definition;
   if (def.categories && Object.keys(def.categories).length) {
@@ -78,10 +82,10 @@ export function resolveService(version: TariffVersionInput, kind: string, catego
     const c = def.categories[category];
     if (!c) return { error: `Bu sürümde "${category}" kategorisi yok` };
     const svc = c.services[kind as keyof typeof c.services];
-    return svc ? { svc, categoryLabel: c.label } : { error: `"${c.label}" kategorisinde ${kind} hizmeti tanımlı değil` };
+    return svc ? { svc, categoryLabel: c.label } : { error: kind === "STANDBY_TUG" ? notDefined(kind) : `"${c.label}" kategorisinde ${kind} hizmeti tanımlı değil` };
   }
   const svc = def.services[kind as keyof typeof def.services];
-  return svc ? { svc } : { error: `Bu tarife sürümünde ${kind} hizmeti tanımlı değil` };
+  return svc ? { svc } : { error: notDefined(kind) };
 }
 
 export function calculate(input: CalcInput, version: TariffVersionInput, ruleStatuses: Record<string, string> = {}): CalcResult {

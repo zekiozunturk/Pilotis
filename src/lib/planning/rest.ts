@@ -31,6 +31,8 @@ export interface RestProfile {
   standbyCountsAsWork: boolean;        // hazır bulunma çalışma sayılır mı (onaylı kurala bağlı)
   trainingCountsAsWork: boolean;
   minRestBlock: number;                // bundan kısa aralar dinlenme sayılmaz (dk)
+  maxConsecutiveDutyDays?: number | null; // ardışık görev günü sınırı (854: liman hizmetinde haftada en fazla 6 gün)
+  consecutiveDaysSeverity?: "ERROR" | "WARNING";
 }
 
 export interface Violation {
@@ -50,6 +52,7 @@ export interface Metrics {
   minRest24h: number | null;      // dk — en kötü 24 saat penceresi
   minRest7d: number | null;
   longestContinuousWork: number;
+  maxConsecutiveDutyDays: number;  // aralıkta en uzun ardışık görev günü serisi
   weekly: { weekStart: string; workMinutes: number; overtimeMinutes: number }[];
 }
 
@@ -85,16 +88,23 @@ function overlap(w: [number, number][], s: number, e: number): number {
   return t;
 }
 
-/** Dinlenme parçaları (pencere içinde kırpılmış) */
-function restSegments(w: [number, number][], s: number, e: number): number[] {
-  const segs: number[] = [];
-  let cur = s;
+/**
+ * Dinlenme parçaları (pencere içinde kırpılmış). `full`: parçanın ait olduğu gerçek dinlenme süresinin tamamı —
+ * pencere kenarında kesilen uzun bir dinlenme, kırpılmış hâli kısa diye "dinlenme değil" sayılmaz.
+ */
+function restSegments(w: [number, number][], s: number, e: number): { len: number; full: number }[] {
+  const segs: { len: number; full: number }[] = [];
+  let prevEnd = -Infinity; // pencereden önce biten son çalışmanın sonu
+  for (const [a, b] of w) { if (b <= s) prevEnd = Math.max(prevEnd, b); }
+  // Kayıt öncesi/sonrası bilinmiyorsa dinlenme açık uçludur (−∞ / +∞): veri ufkunda kısa görünen parça cezalandırılmaz
+  let cur = s, curFullStart = prevEnd === -Infinity ? -Infinity : Math.min(s, prevEnd);
   for (const [a, b] of w) {
-    if (b <= s || a >= e) continue;
-    if (a > cur) segs.push(Math.min(a, e) - cur);
-    cur = Math.max(cur, b);
+    if (b <= s) continue;
+    if (a >= e) { if (e > cur) segs.push({ len: e - cur, full: a - curFullStart }); cur = e; break; }
+    if (a > cur) segs.push({ len: Math.min(a, e) - cur, full: a - curFullStart });
+    cur = Math.max(cur, b); curFullStart = cur;
   }
-  if (e > cur) segs.push(e - cur);
+  if (e > cur) { const nextStart = w.find(([a]) => a >= e)?.[0] ?? Infinity; segs.push({ len: e - cur, full: nextStart - curFullStart }); }
   return segs;
 }
 
@@ -156,11 +166,13 @@ export function evaluate(xs: Interval[], p: RestProfile, from: number, to: numbe
       violations.push({ code: "WORK_24H", severity: "ERROR", ruleRef: p.name, message: `24 saatte çalışma ${fmtH(work / MIN)} > ${fmtH(p.maxWork24h)} (${fmtT(s)} – ${fmtT(e)})`, windowStart: s, windowEnd: e });
     }
     if (p.maxRestPeriods24h != null && p.minLongestRest24h != null && p.minRest24h != null && rest >= p.minRest24h) {
-      const segs = restSegments(w, s, e).map((x) => x / MIN).filter((x) => x >= p.minRestBlock).sort((a, b) => b - a);
+      // Parçalar gerçek dinlenme dönemi uzunluğuna göre değerlendirilir; pencere toplamı için pencere içi süre kullanılır
+      const segs = restSegments(w, s, e).filter((x) => x.full / MIN >= p.minRestBlock).map((x) => ({ len: x.len / MIN, full: x.full / MIN })).sort((a, b) => b.len - a.len);
       const top = segs.slice(0, p.maxRestPeriods24h);
-      const sum = top.reduce((a, b) => a + b, 0);
-      if (((top[0] ?? 0) < p.minLongestRest24h || sum < p.minRest24h) && episode("REST_SPLIT", s, e)) {
-        violations.push({ code: "REST_SPLIT", severity: "ERROR", ruleRef: p.name, message: `Dinlenme en fazla ${p.maxRestPeriods24h} parçada ve biri en az ${fmtH(p.minLongestRest24h)} olmalı; en uzun parça ${fmtH(top[0] ?? 0)} (${fmtT(s)} – ${fmtT(e)})`, windowStart: s, windowEnd: e });
+      const sum = top.reduce((a, b) => a + b.len, 0);
+      const longest = Math.max(0, ...top.map((x) => x.full));
+      if ((longest < p.minLongestRest24h || sum < p.minRest24h) && episode("REST_SPLIT", s, e)) {
+        violations.push({ code: "REST_SPLIT", severity: "ERROR", ruleRef: p.name, message: `Dinlenme en fazla ${p.maxRestPeriods24h} parçada ve biri en az ${fmtH(p.minLongestRest24h)} olmalı; en uzun dinlenme ${Number.isFinite(longest) ? fmtH(longest) : "açık uçlu"}, en büyük ${p.maxRestPeriods24h} parçanın toplamı ${fmtH(sum)} (${fmtT(s)} – ${fmtT(e)})`, windowStart: s, windowEnd: e });
       }
     }
   }
@@ -178,7 +190,7 @@ export function evaluate(xs: Interval[], p: RestProfile, from: number, to: numbe
       violations.push({ code: "REST_7D", severity: "ERROR", ruleRef: p.name, message: `7 günlük pencerede dinlenme ${fmtH(rest)} < ${fmtH(p.minRest7d)} (${fmtT(s)} – ${fmtT(e)})`, windowStart: s, windowEnd: e });
     }
     if (p.minContinuousRest7d != null) {
-      const longest = Math.max(0, ...restSegments(raw, s, e)) / MIN;
+      const longest = Math.max(0, ...restSegments(raw, s, e).map((x) => x.len)) / MIN;
       if (longest < p.minContinuousRest7d && episode("WEEKLY_REST", s, e)) {
         violations.push({ code: "WEEKLY_REST", severity: "ERROR", ruleRef: p.name, message: `7 günde kesintisiz dinlenme ${fmtH(longest)} < ${fmtH(p.minContinuousRest7d)} (hafta tatili) (${fmtT(s)} – ${fmtT(e)})`, windowStart: s, windowEnd: e });
       }
@@ -209,6 +221,21 @@ export function evaluate(xs: Interval[], p: RestProfile, from: number, to: numbe
     }
   }
 
+  // Ardışık görev günleri — görevin başladığı yerel takvim günü sayılır (gece görevi tek gün sayılır)
+  const dutyDays = [...new Set(raw.filter(([a, b]) => b - a >= H).map(([a]) => Math.floor((a + TZ) / DAY)))].sort((x, y) => x - y);
+  let maxRun = 0;
+  for (let i = 0; i < dutyDays.length;) {
+    let j = i; while (j + 1 < dutyDays.length && dutyDays[j + 1] === dutyDays[j] + 1) j++;
+    const runStart = dutyDays[i] * DAY - TZ, runEnd = (dutyDays[j] + 1) * DAY - TZ, len = j - i + 1;
+    if (inRange(runStart, runEnd)) {
+      maxRun = Math.max(maxRun, len);
+      if (p.maxConsecutiveDutyDays != null && len > p.maxConsecutiveDutyDays) {
+        violations.push({ code: "CONSECUTIVE_DAYS", severity: p.consecutiveDaysSeverity ?? "WARNING", ruleRef: p.name, message: `${len} gün ardışık görev > ${p.maxConsecutiveDutyDays} gün (${fmtT(runStart).slice(0, 5)} – ${fmtT(runEnd - DAY).slice(0, 5)}); hafta tatili münavebeyle verilmeli`, windowStart: runStart, windowEnd: runEnd });
+      }
+    }
+    i = j + 1;
+  }
+
   // Takvim haftası (pazartesi 00:00 yerel)
   const weekly: Metrics["weekly"] = [];
   const firstMonday = localMidnight(from) - localParts(from).dow * DAY;
@@ -222,7 +249,7 @@ export function evaluate(xs: Interval[], p: RestProfile, from: number, to: numbe
 
   const standbyMinutes = xs.filter((x) => x.category === "STANDBY").reduce((a, x) => a + Math.max(0, Math.min(x.end, to) - Math.max(x.start, from)), 0) / MIN;
   return {
-    metrics: { workMinutes: overlap(raw, from, to) / MIN, nightMinutes, nightShifts, standbyMinutes, minRest24h: worst24, minRest7d: worst7, longestContinuousWork: longestCont, weekly },
+    metrics: { workMinutes: overlap(raw, from, to) / MIN, nightMinutes, nightShifts, standbyMinutes, minRest24h: worst24, minRest7d: worst7, longestContinuousWork: longestCont, maxConsecutiveDutyDays: maxRun, weekly },
     violations,
   };
 }

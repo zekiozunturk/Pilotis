@@ -85,3 +85,27 @@ describe("Ne olur analizi", () => {
     expect(r.newViolations).toEqual([]);
   });
 });
+
+describe("Dinlenme parçası — pencere kenarı", () => {
+  it("her gün 07–21 görev (10 sa kesintisiz dinlenme) 24 saatlik bölünme kuralını ihlal etmez; pencere kenarında kesilen dinlenme gerçek uzunluğuyla değerlendirilir", () => {
+    const xs = Array.from({ length: 10 }, (_, i) => ({ start: new Date(`2026-11-${String(2 + i).padStart(2, "0")}T07:00:00+03:00`).getTime(), end: new Date(`2026-11-${String(2 + i).padStart(2, "0")}T21:00:00+03:00`).getTime(), category: "WORK" as const }));
+    const from = new Date("2026-11-04T00:00:00+03:00").getTime(), to = new Date("2026-11-09T00:00:00+03:00").getTime();
+    const v = evaluate(xs, STCW, from, to).violations.map((x) => x.code);
+    expect(v).not.toContain("REST_SPLIT");
+    expect(v).not.toContain("REST_24H");
+  });
+  it("12 sa görev + 1 sa ara + 2 sa görev: bazı 24 saatlik pencerelerde 10 sa dinlenme ancak 3 parçayla sağlanıyor → ihlal", () => {
+    const d = (h: string, day = "2026-11-02") => new Date(`${day}T${h}:00+03:00`).getTime();
+    const xs = [{ start: d("06:00"), end: d("18:00"), category: "WORK" as const }, { start: d("19:00"), end: d("21:00"), category: "WORK" as const }, { start: d("06:00", "2026-11-03"), end: d("18:00", "2026-11-03"), category: "WORK" as const }];
+    const v = evaluate(xs, STCW, d("00:00"), d("23:59", "2026-11-03")).violations.map((x) => x.code);
+    expect(v.some((c) => c === "REST_24H" || c === "REST_SPLIT")).toBe(true);
+  });
+});
+
+describe("Dinlenme parçası — veri ufku", () => {
+  it("son kayıttan sonra bilinmeyen dönem dinlenme kabul edilir; ufuktaki 15 dk'lık kırpılmış parça ihlal üretmez", () => {
+    const xs = Array.from({ length: 3 }, (_, i) => ({ start: new Date(`2026-11-0${2 + i}T07:00:00+03:00`).getTime(), end: new Date(`2026-11-0${2 + i}T21:00:00+03:00`).getTime(), category: "WORK" as const }));
+    const v = evaluate(xs, STCW, new Date("2026-11-01T00:00:00+03:00").getTime(), new Date("2026-11-05T00:00:00+03:00").getTime()).violations.map((x) => x.code);
+    expect(v).not.toContain("REST_SPLIT");
+  });
+});

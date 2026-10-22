@@ -33,12 +33,12 @@ for (const [svc, sd, sl] of SVC) for (const [cat, cd, cl] of CATS) {
   );
 }
 items.push(
-  { code: "500.001", name: "Standby römorkör 16–30 t", unit: "Saat", currency: "USD", price: "400" },
-  { code: "500.002", name: "Standby römorkör 30–45 t", unit: "Saat", currency: "USD", price: "600" },
-  { code: "500.003", name: "Standby römorkör 45–60 t", unit: "Saat", currency: "USD", price: "750" },
-  { code: "500.004", name: "Standby römorkör 60–80 t", unit: "Saat", currency: "USD", price: "1000" },
-  { code: "500.005", name: "Standby römorkör 80 t ve üzeri", unit: "Saat", currency: "USD", price: "1250" },
-  { code: "500.010", name: "Standby römorkör hizmet bedeli (çeki gücüne göre)", unit: "Saat", currency: "USD", formula: "KADEME(CEKI; 16; [500.001]; 30; [500.002]; 45; [500.003]; 60; [500.004]; 80; [500.005])", serviceKind: "STANDBY_TUG" },
+  { code: "500.001", name: "Emniyet römorkörü (standby) 16–30 t", unit: "Saat", currency: "USD", price: "400" },
+  { code: "500.002", name: "Emniyet römorkörü (standby) 30–45 t", unit: "Saat", currency: "USD", price: "600" },
+  { code: "500.003", name: "Emniyet römorkörü (standby) 45–60 t", unit: "Saat", currency: "USD", price: "750" },
+  { code: "500.004", name: "Emniyet römorkörü (standby) 60–80 t", unit: "Saat", currency: "USD", price: "1000" },
+  { code: "500.005", name: "Emniyet römorkörü (standby) 80 t ve üzeri", unit: "Saat", currency: "USD", price: "1250" },
+  { code: "500.010", name: "Emniyet römorkörü (standby) hizmet bedeli (çeki gücüne göre)", unit: "Saat", currency: "USD", formula: "KADEME(CEKI; 16; [500.001]; 30; [500.002]; 45; [500.003]; 60; [500.004]; 80; [500.005])", serviceKind: "STANDBY_TUG" },
   { code: "390.001", name: "Kılavuz/römorkörden ayrı verilen palamar (hizmet ve bot başına, zamsız)", unit: "Bot/hizmet", currency: "USD", price: "100", note: "VN-06 — henüz bir hizmet satırına bağlanmadı" },
 );
 

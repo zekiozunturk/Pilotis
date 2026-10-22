@@ -17,12 +17,16 @@ function mondayOf(ms: number) { const d = new Date(ms + TZ); d.setUTCHours(0, 0,
 const ymd = (ms: number) => new Date(ms + TZ).toISOString().slice(0, 10);
 const tm = (ms: number) => new Date(ms + TZ).toISOString().slice(11, 16);
 
-export default async function Planning({ searchParams }: { searchParams: Promise<{ hafta?: string }> }) {
+export default async function Planning({ searchParams }: { searchParams: Promise<{ hafta?: string; tumu?: string }> }) {
   await requireInternalPage();
   const sp = await searchParams;
   const ws = sp.hafta ? mondayOf(new Date(`${sp.hafta}T12:00:00+03:00`).getTime()) : mondayOf(Date.now());
   const we = ws + 7 * DAY;
-  const board = await weekBoard(ws);
+  const fullBoard = await weekBoard(ws);
+  const showAll = sp.tumu === "1";
+  // Varsayılan: bu hafta kaydı olan veya kural/belge sorunu olan kişiler (izin haftasındaki ekipler gizlenir)
+  const board = showAll ? fullBoard : fullBoard.filter((b) => b.intervals.length > 0);
+  const hidden = fullBoard.length - board.length;
   const exUsed = await exceptionsThisMonth();
   const assets = await db.select().from(s.fleetAssets).orderBy(asc(s.fleetAssets.name));
   const ops = await db.select({ ref: s.operations.ref, plannedStart: s.operations.plannedStart, vessel: s.vessels.name }).from(s.operations)
@@ -48,6 +52,8 @@ export default async function Planning({ searchParams }: { searchParams: Promise
           <Link className="btn secondary" href={`/planlama?hafta=${ymd(ws - 7 * DAY)}`}>← Önceki hafta</Link>
           <Link className="btn secondary" href="/planlama">Bu hafta</Link>
           <Link className="btn secondary" href={`/planlama?hafta=${ymd(ws + 7 * DAY)}`}>Sonraki hafta →</Link>
+          <Link className="btn secondary" href={`/planlama?hafta=${ymd(ws)}${showAll ? "" : "&tumu=1"}`}>{showAll ? "Yalnız bu hafta görevliler" : `Tüm personel (+${hidden} izinde)`}</Link>
+          <Link className="btn" href="/planlama/rotasyon">↻ Ekip rotasyonu</Link>
         </div>
       </div>
 
@@ -148,7 +154,7 @@ export default async function Planning({ searchParams }: { searchParams: Promise
 
       <div className="grid g2">
         <div className="card"><h2><Term n={36}>Vardiya</Term> / görev ekle</h2>
-          <ShiftForm people={board.map((b) => ({ id: b.person.id, label: `${b.person.fullName.replace("ÖRNEK ", "")} — ${b.person.title}` }))} assets={assets.map((a) => ({ id: a.id, label: a.name }))} defaultDay={ymd(Math.max(ws, Math.min(now, we - DAY)))} exLimit={EXCEPTION_MONTHLY_LIMIT} exUsed={exUsed} />
+          <ShiftForm people={fullBoard.map((b) => ({ id: b.person.id, label: `${b.person.fullName.replace("ÖRNEK ", "")} — ${b.person.title}` }))} assets={assets.map((a) => ({ id: a.id, label: a.name }))} defaultDay={ymd(Math.max(ws, Math.min(now, we - DAY)))} exLimit={EXCEPTION_MONTHLY_LIMIT} exUsed={exUsed} />
         </div>
         <div className="card"><h2>Operasyon için ekip önerisi</h2>
           <CrewSuggest ops={ops.map((o) => ({ ref: o.ref, label: `${o.ref} · ${o.vessel}`, start: o.plannedStart ? new Date(o.plannedStart.getTime() + TZ).toISOString().slice(0, 16) : "" }))} />

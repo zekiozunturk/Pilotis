@@ -43,3 +43,37 @@ export async function addTerm(_: TState, f: FormData): Promise<TState> {
   revalidatePath("/terminoloji");
   return { ok: true, message: `#${n} "${g("tr")}" eklendi — numara kalıcıdır`, at: new Date().toISOString() };
 }
+
+/**
+ * Terim düzenleme — numara değişmez. Türkçe metin/tanım değişirse sürüm artar; bir dilin çevirisi
+ * değişirse o dilin onayı düşer (yeniden insan kontrolü gerekir). Önceki hâl denetim kaydında saklanır.
+ */
+export async function editTerm(_: TState, f: FormData): Promise<TState> {
+  const role = await currentRole();
+  if (!EDITORS.includes(role)) return { ok: false, message: `Yetkiniz yok (${ROLE_LABELS[role]})` };
+  const g = (k: string) => String(f.get(k) || "").trim();
+  const n = Number(f.get("n"));
+  const [t] = await db.select().from(s.terms).where(eq(s.terms.number, n));
+  if (!t) return { ok: false, message: "Terim bulunamadı" };
+  if (!g("tr") || g("definition").length < 10) return { ok: false, message: "Türkçe terim ve en az 10 karakterlik tanım zorunlu" };
+  if (g("changeNote").length < 5) return { ok: false, message: "Değişiklik notu zorunlu (ne neden değişti?)" };
+  const before = t.translations as Record<string, { text: string; reviewed: boolean; reviewer?: string }>;
+  const tr: typeof before = {};
+  const resetLangs: string[] = [];
+  for (const l of LANGS) {
+    const text = g(`t_${l}`), prev = before[l];
+    if (prev && prev.text === text) tr[l] = prev;
+    else { tr[l] = { text, reviewed: false }; if (prev?.reviewed) resetLangs.push(l.toUpperCase()); }
+  }
+  const all = LANGS.every((l) => tr[l]?.reviewed), some = LANGS.some((l) => tr[l]?.reviewed);
+  const next = {
+    tr: g("tr"), aliases: g("aliases") ? g("aliases").split(",").map((x) => x.trim()).filter(Boolean) : [],
+    definition: g("definition"), source: g("source") || null, confusedWith: g("confused") || null,
+  };
+  const changed = next.tr !== t.tr || next.definition !== t.definition || next.source !== t.source || next.confusedWith !== t.confusedWith || next.aliases.join("|") !== t.aliases.join("|") || JSON.stringify(tr) !== JSON.stringify(before);
+  if (!changed) return { ok: false, message: "Değişiklik yok" };
+  await db.update(s.terms).set({ ...next, translations: tr, version: t.version + 1, status: all ? "ONAYLI" : some ? "KISMEN_ONAYLI" : "TASLAK" }).where(eq(s.terms.number, n));
+  await recordAudit("term", String(n), "UPDATE", { before: { tr: t.tr, aliases: t.aliases, definition: t.definition, source: t.source, confusedWith: t.confusedWith, translations: before }, after: { ...next, translations: tr }, note: g("changeNote") }, role);
+  revalidatePath("/terminoloji");
+  return { ok: true, message: `#${n} güncellendi (v${t.version + 1})${resetLangs.length ? ` — ${resetLangs.join(", ")} çevirisi değiştiği için yeniden onay bekliyor` : ""}`, at: new Date().toISOString() };
+}

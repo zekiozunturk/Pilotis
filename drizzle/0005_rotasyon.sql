@@ -1,0 +1,1 @@
+ALTER TABLE "personnel" ADD COLUMN "rotation_team" text;
