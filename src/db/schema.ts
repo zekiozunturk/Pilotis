@@ -291,6 +291,8 @@ export const personnelSensitive = pgTable("personnel_sensitive", {
 export const fleetAssets = pgTable("fleet_assets", {
   id: id(),
   name: text("name").notNull(),
+  code: text("code").unique(),            // kısa kod: R1…R7
+  siteName: text("site_name"),            // web sitesinde yayımlanan ad (eşleştirme için)
   type: assetType("type").notNull(),
   imo: text("imo"),
   mmsi: text("mmsi"),

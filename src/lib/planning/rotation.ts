@@ -30,13 +30,13 @@ export interface RotationModel {
 
 export const DEFAULT_ROTATION: RotationModel = {
   tugs: [
-    { id: "T1", name: "Yalova 2", mode: "DAY" },
-    { id: "T2", name: "Yalova 3", mode: "DAY" },
-    { id: "T3", name: "Yalova 4", mode: "NIGHT" },
-    { id: "T4", name: "Yalova 5", mode: "NIGHT" },
-    { id: "T5", name: "Römorkör 5 (ad girilecek)", mode: "DAY" },
-    { id: "T6", name: "Römorkör 6 (ad girilecek)", mode: "DAY" },
-    { id: "T7", name: "Römorkör 7 (ad girilecek)", mode: "DAY" },
+    { id: "R1", name: "Römork-1", mode: "DAY" },
+    { id: "R2", name: "Römork-2", mode: "DAY" },
+    { id: "R3", name: "Römork-3", mode: "NIGHT" },
+    { id: "R4", name: "Römork-4", mode: "NIGHT" },
+    { id: "R5", name: "Römork-5", mode: "DAY" },
+    { id: "R6", name: "Römork-6", mode: "DAY" },
+    { id: "R7", name: "Römork-7", mode: "DAY" },
   ],
   roles: [
     { code: "KAPTAN", label: "Römorkör Kaptanı" },

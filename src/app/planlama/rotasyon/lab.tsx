@@ -47,7 +47,7 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
   const [applySt, apply, applying] = useActionState<RState, FormData>(applyRotation, null);
   const set = <K extends keyof RotationModel>(k: K, v: RotationModel[K]) => setM((x) => ({ ...x, [k]: v }));
   const setTug = (i: number, patch: Partial<RotationModel["tugs"][number]>) => setM((x) => ({ ...x, tugs: x.tugs.map((t, j) => (j === i ? { ...t, ...patch } : t)) }));
-  const nextTugId = () => { let n = m.tugs.length + 1; while (m.tugs.some((t) => t.id === `T${n}`)) n++; return `T${n}`; };
+  const nextTugId = () => { let n = m.tugs.length + 1; while (m.tugs.some((t) => t.id === `R${n}`)) n++; return `R${n}`; };
 
   // Takvim şeridi: bugünün haftasından 4 hafta
   const anchor = new Date(`${dm.anchor}T00:00:00+03:00`).getTime();
@@ -111,7 +111,7 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
               </div>
             ))}
           </div>
-          <button type="button" className="btn secondary" style={{ marginTop: 8 }} onClick={() => setM((x) => ({ ...x, tugs: [...x.tugs, { id: nextTugId(), name: `Römorkör ${x.tugs.length + 1}`, mode: "DAY" }] }))}>+ Römorkör ekle</button>
+          <button type="button" className="btn secondary" style={{ marginTop: 8 }} onClick={() => setM((x) => ({ ...x, tugs: [...x.tugs, { id: nextTugId(), name: `Römork-${nextTugId().slice(1)}`, mode: "DAY" }] }))}>+ Römorkör ekle</button>
 
           <h3 style={{ marginTop: 16 }}>Ekip başına görev rolleri ({m.roles.length} kişi)</h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>

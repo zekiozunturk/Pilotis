@@ -26,12 +26,16 @@ export const OPERATOR = {
   motto: "7/24 Kesintisiz Hizmet",
 };
 
-/** Kaynak: yalovapilotaj.com/filo — teknik özellikler henüz alınmadı (AK-01) */
+/** Kaynak: yalovapilotaj.com/filo — teknik özellikler henüz alınmadı (AK-01).
+ *  Römorkör adlandırması (işletme kararı 22.10.2026): Römork-1…7, kısaltma R1…R7; siteName = sitede yayımlanan ad */
 export const FLEET_SEED = [
-  { name: "Yalova 2", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00175-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2-2/" },
-  { name: "Yalova 3", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yaloova3-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-3/" },
-  { name: "Yalova 4", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yalova44444444444444-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-4/" },
-  { name: "Yalova 5", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yalova5.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-5/" },
+  { name: "Römork-1", code: "R1", siteName: "Yalova 2", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00175-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2-2/" },
+  { name: "Römork-2", code: "R2", siteName: "Yalova 3", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yaloova3-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-3/" },
+  { name: "Römork-3", code: "R3", siteName: "Yalova 4", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yalova44444444444444-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-4/" },
+  { name: "Römork-4", code: "R4", siteName: "Yalova 5", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yalova5.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-5/" },
+  { name: "Römork-5", code: "R5", siteName: null, type: "TUG", photoUrl: null, sourceUrl: null },
+  { name: "Römork-6", code: "R6", siteName: null, type: "TUG", photoUrl: null, sourceUrl: null },
+  { name: "Römork-7", code: "R7", siteName: null, type: "TUG", photoUrl: null, sourceUrl: null },
   { name: "Palamar Bot 1", type: "MOORING_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00361-scaled.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/palamar-bot-1/" },
   { name: "Palamar Bot 2", type: "MOORING_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00373-scaled.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2/" },
   { name: "Pilot Bot 1", type: "PILOT_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00451-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/pilot-bot-2/" },

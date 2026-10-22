@@ -12,7 +12,7 @@ export default async function Fleet() {
   return (
     <>
       <div className="pagehead"><div><h1>Filo</h1><div className="muted">Kaynak: <a href={`${OPERATOR.website}/filo/`} target="_blank" rel="noreferrer">yalovapilotaj.com/filo</a> · Araç sayısı sabit kodlanmaz.</div></div></div>
-      <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>AK-01 · Teknik özellikler doğrulanmadı</b>Sitede 4 römorkör (Yalova 2–5) yayımlanıyor; şartname 7 römorkör öngörüyor. Çeki gücü, IMO/MMSI ve sertifikalar gelene kadar römorkör karar motoru bu araçları uygunluk hesabına almaz; değerler uydurulmaz.</div></div>
+      <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>AK-01 · Teknik özellikler doğrulanmadı</b>Römorkörler Römork-1…7 (kısaltma R1…R7) olarak adlandırıldı; sitede yayımlanan 4 römorkör (Yalova 2–5) R1–R4 ile eşleştirildi, R5–R7 için kayıt bilgisi bekleniyor. Çeki gücü, IMO/MMSI ve sertifikalar gelene kadar römorkör karar motoru bu araçları uygunluk hesabına almaz; değerler uydurulmaz.</div></div>
       {order.map((t) => {
         const list = assets.filter((a) => a.type === t);
         if (!list.length) return null;
@@ -23,9 +23,10 @@ export default async function Fleet() {
               {list.map((a) => (
                 <div className="item" key={a.id}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {a.photoUrl ? <img src={a.photoUrl} alt={a.name} loading="lazy" /> : <div style={{ height: 150, background: "var(--navy-100)" }} />}
+                  {a.photoUrl ? <img src={a.photoUrl} alt={a.name} loading="lazy" /> : <div style={{ height: 150, background: "var(--navy-100)", display: "grid", placeItems: "center", color: "var(--navy-700)", fontSize: 40, fontWeight: 700 }}>{a.code ?? ""}</div>}
                   <div className="b">
-                    <div className="n">{a.name}</div>
+                    <div className="n">{a.code && <span className="badge" style={{ marginRight: 6, fontFamily: "var(--mono, monospace)" }}>{a.code}</span>}{a.name}</div>
+                    {a.siteName && <div className="muted" style={{ fontSize: 12 }}>Sitedeki adı: {a.siteName}</div>}
                     <div style={{ fontSize: 12.5, marginTop: 4 }}>
                       Çeki gücü: <b>{a.bollardPullT ? `${fmtNum(a.bollardPullT, 1)} t` : "—"}</b> · Boy: {a.loa ? `${fmtNum(a.loa, 1)} m` : "—"}
                     </div>

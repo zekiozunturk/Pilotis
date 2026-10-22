@@ -40,7 +40,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         <div>
           <div className="muted" style={{ fontSize: 12 }}><Link href="/personel">Personel</Link> / <Link href="/planlama">Planlama</Link></div>
           <h1>{p.fullName} {p.isDemo && <span className="badge demo">ÖRNEK</span>}</h1>
-          <div className="muted">{p.title} · {p.unit}{asset ? ` · ${asset.name}` : ""} · Profil: <b>{prof.name}</b></div>
+          <div className="muted">{p.title} · {p.unit}{asset ? ` · ${asset.code ? `${asset.code} · ` : ""}${asset.name}` : ""} · Profil: <b>{prof.name}</b></div>
         </div>
       </div>
 

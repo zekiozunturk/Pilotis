@@ -154,7 +154,7 @@ export default async function Planning({ searchParams }: { searchParams: Promise
 
       <div className="grid g2">
         <div className="card"><h2><Term n={36}>Vardiya</Term> / görev ekle</h2>
-          <ShiftForm people={fullBoard.map((b) => ({ id: b.person.id, label: `${b.person.fullName.replace("ÖRNEK ", "")} — ${b.person.title}` }))} assets={assets.map((a) => ({ id: a.id, label: a.name }))} defaultDay={ymd(Math.max(ws, Math.min(now, we - DAY)))} exLimit={EXCEPTION_MONTHLY_LIMIT} exUsed={exUsed} />
+          <ShiftForm people={fullBoard.map((b) => ({ id: b.person.id, label: `${b.person.fullName.replace("ÖRNEK ", "")} — ${b.person.title}` }))} assets={assets.sort((x, y) => (x.code ?? "Z" + x.name).localeCompare(y.code ?? "Z" + y.name, "tr", { numeric: true })).map((a) => ({ id: a.id, label: a.code ? `${a.code} · ${a.name}` : a.name }))} defaultDay={ymd(Math.max(ws, Math.min(now, we - DAY)))} exLimit={EXCEPTION_MONTHLY_LIMIT} exUsed={exUsed} />
         </div>
         <div className="card"><h2>Operasyon için ekip önerisi</h2>
           <CrewSuggest ops={ops.map((o) => ({ ref: o.ref, label: `${o.ref} · ${o.vessel}`, start: o.plannedStart ? new Date(o.plannedStart.getTime() + TZ).toISOString().slice(0, 16) : "" }))} />

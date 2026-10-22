@@ -37,7 +37,7 @@ async function main() {
   }).returning();
 
   // Filo (gerçek adlar, teknik özellik doğrulanmamış — AK-01)
-  await db.insert(s.fleetAssets).values(FLEET_SEED.map((f) => ({ ...f, type: f.type as "TUG", specVerified: false })));
+  await db.insert(s.fleetAssets).values(FLEET_SEED.map((f) => ({ ...f, code: "code" in f ? f.code : null, siteName: "siteName" in f ? f.siteName : null, type: f.type as "TUG", specVerified: false })));
 
   await db.insert(s.operationTypes).values(OPERATION_TYPES.map((o) => ({
     code: o.code, nameTr: o.nameTr, nameEn: o.nameEn, serviceKinds: o.kinds, tariffFamilies: o.families, unit: o.unit,
@@ -113,7 +113,7 @@ async function main() {
     { operationId: op1.id, kind: "MOORING", allocatedUnits: 1, billableUnits: 1, status: "COMPLETED" },
   ]);
   const tugs = await db.select().from(s.fleetAssets);
-  const t2 = tugs.find((t) => t.name === "Yalova 2")!; const t3 = tugs.find((t) => t.name === "Yalova 3")!;
+  const t2 = tugs.find((t) => t.code === "R1")!; const t3 = tugs.find((t) => t.code === "R2")!;
   const ev = (type: string, at: string, serviceKind?: string, assetId?: string) => ({ operationId: op1.id, type: type as "SERVICE_START", occurredAt: new Date(at), serviceKind: serviceKind as "TOWAGE" | undefined, assetId });
   await db.insert(s.timelineEvents).values([
     ev("TASK_ACCEPTED", "2026-10-22T06:20:00Z"),
@@ -144,7 +144,7 @@ async function main() {
   const tugAssets = new Map((await db.select().from(s.fleetAssets)).map((a) => [a.name, a.id]));
   const people: { id: string; crewRole: string; tug?: string; team?: string; letter?: string; name: string; rotationTeam: string | null }[] = [];
   for (const t of teamsOf(rot)) for (const r of rot.roles) {
-    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${r.label} · ${t.tugName.replace(" (ad girilecek)", "")} · ${t.letter}`, title: r.label, unit: `${t.tugName.replace(" (ad girilecek)", "")} ekipleri`, crewRole: r.code, homeAssetId: tugAssets.get(t.tugName) ?? null, workProfile: "STCW_MLC", rotationTeam: t.key, isDemo: true }).returning();
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${r.label} · ${t.tugName} · ${t.letter}`, title: r.label, unit: `${t.tugName} ekipleri`, crewRole: r.code, homeAssetId: tugAssets.get(t.tugName) ?? null, workProfile: "STCW_MLC", rotationTeam: t.key, isDemo: true }).returning();
     people.push({ id: p.id, crewRole: r.code, tug: t.tugName, letter: t.letter, name: p.fullName, rotationTeam: t.key });
   }
   // Yedek havuzu (ekibe atanmamış) — 2 kişi örnek
@@ -182,11 +182,11 @@ async function main() {
     });
   });
   const pick = (tug: string, letter: string, cr: string) => people.find((p) => p.tug === tug && p.letter === letter && p.crewRole === cr)!;
-  // Bilinçli ihlal örneği: Yalova 5 (gece) B ekibi kaptanı gece görevinden çıkıp aynı sabah ek göreve yazılmış
-  add(pick("Yalova 5", "B", "KAPTAN").id, "WORK", tr("2026-10-23", "08:00"), tr("2026-10-23", "16:00"), "Ek görev (örnek ihlal)");
+  // Bilinçli ihlal örneği: Römork-4 / R4 (gece) B ekibi kaptanı gece görevinden çıkıp aynı sabah ek göreve yazılmış
+  add(pick("Römork-4", "B", "KAPTAN").id, "WORK", tr("2026-10-23", "08:00"), tr("2026-10-23", "16:00"), "Ek görev (örnek ihlal)");
   // Eğitim (izin haftasındaki A ekibinden) ve yıllık izin (görevdeki B ekibinden) örnekleri
-  add(pick("Yalova 2", "A", "YAGCI").id, "TRAINING", tr("2026-10-24", "09:00"), tr("2026-10-24", "13:00"), "Yangın tatbikatı");
-  const y3p = pick("Yalova 3", "B", "PIMCI");
+  add(pick("Römork-1", "A", "YAGCI").id, "TRAINING", tr("2026-10-24", "09:00"), tr("2026-10-24", "13:00"), "Yangın tatbikatı");
+  const y3p = pick("Römork-2", "B", "PIMCI");
   for (const r of rows.filter((r) => r.personnelId === y3p.id && r.startAt >= tr("2026-10-22", "00:00") && r.startAt < tr("2026-10-24", "00:00"))) rows.splice(rows.indexOf(r), 1);
   add(y3p.id, "LEAVE", tr("2026-10-22", "00:00"), tr("2026-10-24", "00:00"), "Yıllık izin");
   for (let i = 0; i < rows.length; i += 500) await db.insert(s.shifts).values(rows.slice(i, i + 500));
