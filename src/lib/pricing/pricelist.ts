@@ -23,7 +23,7 @@ export interface PriceItem {
 }
 
 /** Kur tablosu: 1 birim döviz kaç TL (TRY = 1) */
-export type FxTable = Partial<Record<Currency, { rate: string; date: string; source: string }>>;
+export type FxTable = Partial<Record<Currency, { rate: string; date: string; source: string; provisional?: boolean; note?: string }>>;
 
 export function fxRate(fx: FxTable, c: Currency): Decimal {
   if (c === "TRY") return new Decimal(1);

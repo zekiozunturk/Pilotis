@@ -14,6 +14,7 @@ export function CalcCard({ r, display }: { r: CalcResult; display?: DisplayLike 
           <div className="muted" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>{SERVICE_LABELS[r.serviceKind]}</div>
           <div className="amount">{r.missing.length ? "—" : op ? fmtCcy(op.amount, "TRY") : <span style={{ color: "var(--warn)", fontSize: 16 }}>TL karşılığı yok (kur)</span>}</div>
           {!r.missing.length && r.currency !== "TRY" && <div style={{ fontSize: 12 }}>Liste: <b>{fmtMoney(r.netAmount, r.currency)}</b>{op ? ` × ${op.rate} (${op.rateSource}, ${op.rateDate})` : ""}</div>}
+          {op?.provisional && <div><span className="badge warn" title={op.note}>Geçici kur — {op.note}</span></div>}
           {alt && <div className="muted" style={{ fontSize: 12 }}>{alt}</div>}
           <div className="muted" style={{ fontSize: 12 }}>{r.tariffLabel}{r.itemCode ? <> · kalem <span className="mono">[{r.itemCode}]</span></> : null}</div>
         </div>

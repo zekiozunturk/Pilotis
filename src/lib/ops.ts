@@ -90,7 +90,11 @@ export async function computeOperation(o: LoadedOperation, mode: "actual" | "est
   if (dgClass) conds.push("DANGEROUS_CARGO", isContainerOrRoro(o.vessel.vesselType) ? "DANGEROUS_CARGO_CRP" : "DANGEROUS_CARGO_OTHER");
   if (o.vessel.flag?.toUpperCase() === "TR") conds.push("TR_FLAG");
   const holiday = holidayAt(serviceDate);
-  const fx = await getFxTable(serviceDate);
+  // Kur: iş bitiş günü (işletme kararı). İş bitmemişse/tahminse kur geçicidir.
+  const closed = ["COMPLETED", "PARTIAL", "CANCELLED"].includes(o.op.opStatus);
+  const endEvents = o.events.filter((e) => ["SERVICE_END", "PILOT_DISEMBARKED", "CANCEL_OR_INCOMPLETE"].includes(e.type));
+  const completionIso = closed && endEvents.length ? new Date(Math.max(...endEvents.map((e) => e.occurredAt.getTime()))).toISOString() : null;
+  const fx = await getFxTable(mode === "actual" && completionIso ? completionIso : serviceDate, undefined, { provisional: mode === "estimate" || !completionIso, provisionalNote: mode === "estimate" ? "Tahmin — kur iş bitiş gününde kesinleşir" : undefined });
   if (holiday) conds.push("HOLIDAY");
   const evs = o.events.map((e) => ({ ...e, occurredAt: e.occurredAt.toISOString() }));
   // tahmin modunda saha doğrulaması yoksa müşteri beyanı kullanılır (tahmini ve bağlayıcı değil); gerçekleşen hesapta yalnız doğrulanmış GT

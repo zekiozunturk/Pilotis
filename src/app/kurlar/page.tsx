@@ -20,9 +20,10 @@ export default async function Rates() {
       <div className="grid g3" style={{ marginBottom: 16 }}>
         {(["USD", "EUR"] as const).map((c) => (
           <div className="card kpi" key={c}>
-            <div className="l">Bugünkü hizmetlerde kullanılacak {c}/TRY</div>
+            <div className="l">Bugün biten işlerde {c}/TRY</div>
             <div className="v">{now[c] ? Number(now[c]!.rate).toLocaleString("tr-TR", { minimumFractionDigits: 4 }) : "—"}</div>
             <div className="muted" style={{ fontSize: 12 }}>{now[c] ? `${now[c]!.source} · bülten ${now[c]!.date}` : "Bu tarih için kur yok — TL karşılığı hesaplanmaz"}</div>
+            {now[c]?.provisional && <div className="badge warn" style={{ marginTop: 4 }}>Geçici — {now[c]!.note}</div>}
           </div>
         ))}
         <div className="card">
@@ -34,7 +35,7 @@ export default async function Rates() {
       </div>
       <div className="grid g2" style={{ marginBottom: 16 }}>
         <div className="card"><h2>TCMB'den güncelle</h2>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Canlı sunucuda günlük otomatik çekim: <span className="mono">POST /api/kur/guncelle</span> (CRON_SECRET başlığıyla). Hafta sonu/tatilde bülten yayımlanmaz; son bülten kullanılır.</div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Canlı sunucuda günlük otomatik çekim: <span className="mono">POST /api/kur/guncelle</span> (CRON_SECRET başlığıyla). Bülten her iş günü 15:30'da yayımlanır; 15:45 sonrası çekilmelidir. İş hafta sonu biterse cuma bülteni kullanılır.</div>
           <PullForm />
           <div className="sep" />
           <h3>Elle giriş (TCMB'ye erişilemediğinde)</h3>

@@ -55,8 +55,8 @@ async function main() {
     { currency: "USD", bulletinDate: "2026-10-21", bulletinNo: "2026/199", forexBuying: "49.5123", forexSelling: "49.6015", source: "TCMB", enteredBy: "seed" },
     { currency: "EUR", bulletinDate: "2026-10-21", bulletinNo: "2026/199", forexBuying: "55.5780", forexSelling: "55.6781", source: "TCMB", enteredBy: "seed" },
   ]);
-  await db.insert(s.appSettings).values({ key: "fx.policy", value: { rateType: "FOREX_SELLING", dateRule: "PREVIOUS_BULLETIN", preferSource: "TCMB" }, updatedBy: "BUSINESS_MANAGER" });
-  await db.insert(s.auditLog).values({ entity: "app_settings", entityId: "fx.policy", action: "UPDATE", after: { rateType: "FOREX_SELLING", dateRule: "PREVIOUS_BULLETIN" }, actorId: "BUSINESS_MANAGER", reason: "İşletme kararı: TCMB döviz satış kullanılacak (22.10.2026)" });
+  await db.insert(s.appSettings).values({ key: "fx.policy", value: { rateType: "FOREX_SELLING", dateRule: "COMPLETION_DAY_BULLETIN", preferSource: "TCMB" }, updatedBy: "BUSINESS_MANAGER" });
+  await db.insert(s.auditLog).values({ entity: "app_settings", entityId: "fx.policy", action: "UPDATE", after: { rateType: "FOREX_SELLING", dateRule: "COMPLETION_DAY_BULLETIN" }, actorId: "BUSINESS_MANAGER", reason: "İşletme kararı (22.10.2026): TCMB döviz satış; işin bittiği günün kuru, hafta sonu biterse cuma 15:30 kuru" });
 
   const [fam] = await db.insert(s.tariffFamilies).values({ kind: "MINISTRY", name: "Bakanlık KRP hizmet tarifesi" }).returning();
   await db.insert(s.tariffVersions).values({

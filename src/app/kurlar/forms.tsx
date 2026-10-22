@@ -35,7 +35,7 @@ export function PolicyForm({ rateType, dateRule }: { rateType: string; dateRule:
     <ActionForm action={savePolicy as unknown as A}>
       <div className="grid g2" style={{ gap: 8 }}>
         <div><label>Kur tipi</label><select name="rateType" defaultValue={rateType}><option value="FOREX_SELLING">TCMB döviz satış</option><option value="FOREX_BUYING">TCMB döviz alış</option></select></div>
-        <div><label>Kur tarihi kuralı</label><select name="dateRule" defaultValue={dateRule}><option value="PREVIOUS_BULLETIN">Hizmet gününden önceki son bülten</option><option value="SAME_DAY_BULLETIN">Hizmet günü dahil son bülten</option></select></div>
+        <div><label>Kur tarihi kuralı</label><select name="dateRule" defaultValue={dateRule}><option value="COMPLETION_DAY_BULLETIN">İş bitiş günü bülteni (hafta sonu → cuma 15:30)</option><option value="PREVIOUS_BULLETIN">Hizmet gününden önceki son bülten</option><option value="SAME_DAY_BULLETIN">Hizmet günü dahil son bülten</option></select></div>
       </div>
       <div className="field" style={{ marginTop: 8 }}><label>Gerekçe / dayanak</label><input name="reason" placeholder="ör. Mali müşavir görüşü tarih/sayı" /></div>
       <SubmitButton className="btn">Politikayı kaydet</SubmitButton>

@@ -122,7 +122,7 @@ export interface CalcResult {
   rules: RuleTrace[];
   netAmount: string;            // liste (kalem) para biriminde
   /** Operasyonel para birimi TL karşılığı; kur yoksa null (asla varsayılmaz) */
-  operational: { amount: string; currency: "TRY"; rate: string; rateDate: string; rateSource: string } | null;
+  operational: { amount: string; currency: "TRY"; rate: string; rateDate: string; rateSource: string; provisional?: boolean; note?: string } | null;
   itemCode?: string | null;
   formulaTrace?: string[];
   missing: string[];

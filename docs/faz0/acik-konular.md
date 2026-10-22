@@ -20,4 +20,4 @@ Geliştirme bu konular kapanmadan **örnek verilerle** devam eder; örnek verile
 | AK-14 | Mevcut "Yalova Pilot Portal" (yalovapilot.com) veri devri ve "Manevra Hesaplama" sayfasının hesap mantığı | İşletme | Erişim / dışa aktarım | Faz 2 | Göç, Hesap |
 | AK-15 | KRP 2026–2027 resmî ücret eki veya DGM'nin duyurduğu ABD TÜFE oranı; Petkim Rev.4 aktarımının dönemi ve 7 doğrulama notu | Tarife sorumlusu | Bakanlık KRP ücret eki / DGM duyurusu | Faz 3 kapanışı | Tarife |
 | AK-16 | 2026–2027 dini bayram tarihleri ve arife yarım gününün tarifeye yansıması | Tarife sorumlusu | Diyanet takvimi / Bakanlık görüşü | Faz 3 | Tarife (R-025) |
-| AK-17 | Kur tipi **TCMB döviz satış** — işletme kararı (22.10.2026), Ayarlar'dan değiştirilebilir. Açık kalan: kur tarihi kuralı (önceki bülten / fatura tarihi) | Muhasebe / Mali müşavir | Görüş yazısı | Faz 4 | Kur, Tahakkuk |
+| AK-17 | ~~Kur tipi ve tarih kuralı~~ **KAPANDI (22.10.2026):** TCMB döviz satış; işin bittiği günün 15:30 bülteni; hafta sonu biterse cuma 15:30 bülteni. Resmî tatil günü bitişte son yayımlanan bülten kullanılır (teyit edilecek) | Muhasebe | İşletme kararı | Kapandı | Kur, Tahakkuk |

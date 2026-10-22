@@ -92,3 +92,16 @@ describe("TCMB XML", () => {
     expect(p.rates[1].unit).toBe(100);
   });
 });
+
+import { completionBulletinDate, pickBulletin } from "@/lib/fx-rules";
+describe("Kur tarihi kuralı — iş bitiş günü, hafta sonu → cuma", () => {
+  it("hafta içi: aynı gün", () => expect(completionBulletinDate("2026-10-22").target).toBe("2026-10-22"));      // perşembe
+  it("cumartesi → cuma", () => expect(completionBulletinDate("2026-10-24").target).toBe("2026-10-23"));
+  it("pazar → cuma", () => expect(completionBulletinDate("2026-10-25").target).toBe("2026-10-23"));
+  it("pazartesi kendisi", () => expect(completionBulletinDate("2026-10-26").target).toBe("2026-10-26"));
+  it("hedef bülten varsa kesin", () => expect(pickBulletin(["2026-10-21", "2026-10-23"], "2026-10-23", "2026-10-27", "x")).toMatchObject({ bulletinDate: "2026-10-23", provisional: false }));
+  it("geçmişte tatil: önceki son bülten, kesin", () => expect(pickBulletin(["2026-10-28"], "2026-10-29", "2026-11-02", "x")).toMatchObject({ bulletinDate: "2026-10-28", provisional: false }));
+  it("bugün bülten henüz yok: geçici", () => expect(pickBulletin(["2026-10-21"], "2026-10-22", "2026-10-22", "x")).toMatchObject({ bulletinDate: "2026-10-21", provisional: true }));
+  it("gelecek tarih (tahmin): geçici", () => expect(pickBulletin(["2026-10-21"], "2026-10-30", "2026-10-22", "x")?.provisional).toBe(true));
+  it("hiç bülten yoksa null", () => expect(pickBulletin([], "2026-10-22", "2026-10-22", "x")).toBeNull());
+});

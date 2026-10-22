@@ -44,7 +44,7 @@ export async function addManualRate(_: KState, f: FormData): Promise<KState> {
 export async function savePolicy(_: KState, f: FormData): Promise<KState> {
   try {
     const role = await need(["BUSINESS_MANAGER", "ACCOUNTING"]);
-    const value: FxPolicy = { rateType: String(f.get("rateType")) === "FOREX_BUYING" ? "FOREX_BUYING" : "FOREX_SELLING", dateRule: String(f.get("dateRule")) === "SAME_DAY_BULLETIN" ? "SAME_DAY_BULLETIN" : "PREVIOUS_BULLETIN", preferSource: "TCMB" };
+    const value: FxPolicy = { rateType: String(f.get("rateType")) === "FOREX_BUYING" ? "FOREX_BUYING" : "FOREX_SELLING", dateRule: (["COMPLETION_DAY_BULLETIN", "PREVIOUS_BULLETIN", "SAME_DAY_BULLETIN"].includes(String(f.get("dateRule"))) ? String(f.get("dateRule")) : "COMPLETION_DAY_BULLETIN") as FxPolicy["dateRule"], preferSource: "TCMB" };
     await db.insert(s.appSettings).values({ key: "fx.policy", value, updatedBy: role }).onConflictDoUpdate({ target: s.appSettings.key, set: { value, updatedBy: role, updatedAt: new Date() } });
     await recordAudit("app_settings", "fx.policy", "UPDATE", value, role, String(f.get("reason") || ""));
     revalidatePath("/", "layout");

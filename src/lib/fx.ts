@@ -1,13 +1,16 @@
 import "server-only";
-import { and, desc, eq, lt, lte } from "drizzle-orm";
+import { and, desc, eq, lte } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import type { FxTable, Currency } from "./pricing/pricelist";
+import { completionBulletinDate, pickBulletin, type DateRule } from "./fx-rules";
 
 /** Kur politikası — mali müşavir onayına tabidir (AK-17) */
-export interface FxPolicy { rateType: "FOREX_SELLING" | "FOREX_BUYING"; dateRule: "PREVIOUS_BULLETIN" | "SAME_DAY_BULLETIN"; preferSource: "TCMB" }
-export const DEFAULT_FX_POLICY: FxPolicy = { rateType: "FOREX_SELLING", dateRule: "PREVIOUS_BULLETIN", preferSource: "TCMB" };
+export interface FxPolicy { rateType: "FOREX_SELLING" | "FOREX_BUYING"; dateRule: DateRule; preferSource: "TCMB" }
+/** İşletme kararı (22.10.2026): TCMB döviz satış; iş bitiş günü bülteni, hafta sonu → cuma 15:30 */
+export const DEFAULT_FX_POLICY: FxPolicy = { rateType: "FOREX_SELLING", dateRule: "COMPLETION_DAY_BULLETIN", preferSource: "TCMB" };
 export const RATE_TYPE_LABEL = { FOREX_SELLING: "döviz satış", FOREX_BUYING: "döviz alış" } as const;
 export const DATE_RULE_LABEL = {
+  COMPLETION_DAY_BULLETIN: "İşin bittiği günün TCMB bülteni (15:30); iş hafta sonu biterse cuma 15:30 bülteni",
   PREVIOUS_BULLETIN: "Hizmet gününden önceki son TCMB bülteni (bülten günü 15:30'da yayımlanır, ertesi gün işlemlerinde kullanılır)",
   SAME_DAY_BULLETIN: "Hizmet günü dahil son TCMB bülteni",
 } as const;
@@ -27,19 +30,30 @@ export function trDay(iso: string): string {
  * Hizmet anı için kur tablosu. Kur bulunamazsa o döviz tabloya girmez (motor TL karşılığını hesaplamaz; asla varsayılmaz).
  * TCMB kaydı varsa elle girilene tercih edilir.
  */
-export async function getFxTable(atIso: string, policy?: FxPolicy): Promise<FxTable> {
+export async function getFxTable(atIso: string, policy?: FxPolicy, opts: { provisional?: boolean; provisionalNote?: string } = {}): Promise<FxTable> {
   const p = policy ?? (await getFxPolicy());
   const day = trDay(atIso);
+  const today = trDay(new Date().toISOString());
   const out: FxTable = {};
   for (const c of FX_CURRENCIES) {
-    const cond = p.dateRule === "PREVIOUS_BULLETIN" ? lt(s.exchangeRates.bulletinDate, day) : lte(s.exchangeRates.bulletinDate, day);
-    const rows = await db.select().from(s.exchangeRates).where(and(eq(s.exchangeRates.currency, c), cond)).orderBy(desc(s.exchangeRates.bulletinDate)).limit(4);
-    const latestDate = rows[0]?.bulletinDate;
-    const pick = rows.filter((r) => r.bulletinDate === latestDate).sort((a) => (a.source === "TCMB" ? -1 : 1))[0];
+    const rows = await db.select().from(s.exchangeRates).where(and(eq(s.exchangeRates.currency, c), lte(s.exchangeRates.bulletinDate, p.dateRule === "COMPLETION_DAY_BULLETIN" ? (day > today ? today : day) : day))).orderBy(desc(s.exchangeRates.bulletinDate)).limit(30);
+    let chosenDate: string | undefined;
+    let provisional = false;
+    let note: string | undefined;
+    if (p.dateRule === "COMPLETION_DAY_BULLETIN") {
+      const { target, reason } = completionBulletinDate(day);
+      const pick = pickBulletin(rows.map((r) => r.bulletinDate), target, today, reason);
+      if (!pick) continue;
+      chosenDate = pick.bulletinDate; provisional = pick.provisional; note = pick.note;
+    } else {
+      chosenDate = rows.find((r) => (p.dateRule === "PREVIOUS_BULLETIN" ? r.bulletinDate < day : r.bulletinDate <= day))?.bulletinDate;
+    }
+    if (opts.provisional) { provisional = true; note = opts.provisionalNote ?? "İş henüz bitmedi — kur iş bitiş gününde kesinleşir"; }
+    const pick = rows.filter((r) => r.bulletinDate === chosenDate).sort((a) => (a.source === "TCMB" ? -1 : 1))[0];
     if (!pick) continue;
     const rate = p.rateType === "FOREX_SELLING" ? pick.forexSelling : pick.forexBuying;
     if (!rate) continue;
-    out[c] = { rate: String(Number(rate)), date: pick.bulletinDate, source: `${pick.source === "TCMB" ? "TCMB" : "Elle giriş"}${pick.bulletinNo ? ` ${pick.bulletinNo}` : ""} ${RATE_TYPE_LABEL[p.rateType]}` };
+    out[c] = { rate: String(Number(rate)), date: pick.bulletinDate, source: `${pick.source === "TCMB" ? "TCMB" : "Elle giriş"}${pick.bulletinNo ? ` ${pick.bulletinNo}` : ""} ${RATE_TYPE_LABEL[p.rateType]}`, provisional, note };
   }
   return out;
 }

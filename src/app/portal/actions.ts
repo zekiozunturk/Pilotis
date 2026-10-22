@@ -52,7 +52,7 @@ export async function estimatePackages(_: PortalState, f: FormData): Promise<Por
     let tariffError: string | null = null;
     try { version = selectTariffVersion(tariffs, when.toISOString()); } catch (e) { tariffError = (e as Error).message; }
     const repair = f.get("repair") === "on";
-    const fx = await getFxTable(when.toISOString());
+    const fx = await getFxTable(when.toISOString(), undefined, { provisional: true, provisionalNote: "Tahmin — kur iş bitiş gününde kesinleşir" });
     const cab = String(f.get("isCabotage") || "");
     const cat = categorize({ vesselType: vessel?.vesselType, isCabotage: cab === "" ? null : cab === "1", isLinerService: f.get("isLiner") === "on" ? true : null });
     const holiday = holidayAt(when.toISOString());

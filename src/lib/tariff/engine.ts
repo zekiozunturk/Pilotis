@@ -251,7 +251,8 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
   } else {
     const fx = input.fx?.[listCurrency];
     if (fx) {
-      operational = { amount: net.times(fxRate(input.fx!, listCurrency)).toDecimalPlaces(2).toFixed(2), currency: "TRY", rate: fx.rate, rateDate: fx.date, rateSource: fx.source };
+      operational = { amount: net.times(fxRate(input.fx!, listCurrency)).toDecimalPlaces(2).toFixed(2), currency: "TRY", rate: fx.rate, rateDate: fx.date, rateSource: fx.source, provisional: !!fx.provisional, note: fx.note };
+      if (fx.provisional) blockers.push(`Kur geçici: ${fx.note ?? "iş bitiş günü bülteni henüz yok"} — TL tutarı kesinleşmedi`);
     } else {
       blockers.push(`${listCurrency}/TRY kuru yok — TL karşılığı hesaplanamadı`);
     }

@@ -25,7 +25,7 @@ export default async function Settings() {
             <tr><td className="muted">Operasyonel para birimi</td><td><b>TL</b></td></tr>
             <tr><td className="muted">Kur tipi</td><td><b>TCMB {RATE_TYPE_LABEL[policy.rateType]}</b></td></tr>
             <tr><td className="muted">Kur tarihi</td><td>{DATE_RULE_LABEL[policy.dateRule]}</td></tr>
-            <tr><td className="muted">Bugünkü hizmetlerde</td><td className="mono">{fx.USD ? `USD ${fx.USD.rate}` : "USD —"} · {fx.EUR ? `EUR ${fx.EUR.rate}` : "EUR —"}{fx.USD ? ` (${fx.USD.source}, bülten ${fx.USD.date})` : ""}</td></tr>
+            <tr><td className="muted">Bugün biten işlerde</td><td className="mono">{fx.USD ? `USD ${fx.USD.rate}` : "USD —"} · {fx.EUR ? `EUR ${fx.EUR.rate}` : "EUR —"}{fx.USD ? ` (${fx.USD.source}, bülten ${fx.USD.date})` : ""}</td></tr>
           </tbody></table>
           {canEdit ? <PolicyForm rateType={policy.rateType} dateRule={policy.dateRule} />
             : <div className="alert info"><span>🔒</span><div>Bu ayarı işletme yöneticisi veya muhasebe değiştirebilir (aktif rol: {ROLE_LABELS[role]}).</div></div>}
@@ -39,7 +39,7 @@ export default async function Settings() {
           <table><tbody>
             {history.map((h) => {
               const v = h.after as { rateType?: string; dateRule?: string };
-              return <tr key={h.id}><td style={{ whiteSpace: "nowrap", fontSize: 12 }}>{fmtDT(h.at)}</td><td style={{ fontSize: 12.5 }}>TCMB {RATE_TYPE_LABEL[v.rateType as keyof typeof RATE_TYPE_LABEL] ?? v.rateType} · {v.dateRule === "SAME_DAY_BULLETIN" ? "hizmet günü dahil" : "önceki bülten"}</td><td style={{ fontSize: 12 }}>{ROLE_LABELS[h.actorId as keyof typeof ROLE_LABELS] ?? h.actorId}{h.reason ? ` — ${h.reason}` : ""}</td></tr>;
+              return <tr key={h.id}><td style={{ whiteSpace: "nowrap", fontSize: 12 }}>{fmtDT(h.at)}</td><td style={{ fontSize: 12.5 }}>TCMB {RATE_TYPE_LABEL[v.rateType as keyof typeof RATE_TYPE_LABEL] ?? v.rateType} · {v.dateRule === "COMPLETION_DAY_BULLETIN" ? "iş bitiş günü (hafta sonu → cuma)" : v.dateRule === "SAME_DAY_BULLETIN" ? "hizmet günü dahil" : "önceki bülten"}</td><td style={{ fontSize: 12 }}>{ROLE_LABELS[h.actorId as keyof typeof ROLE_LABELS] ?? h.actorId}{h.reason ? ` — ${h.reason}` : ""}</td></tr>;
             })}
             {history.length === 0 && <tr><td className="muted">Değişiklik yok.</td></tr>}
           </tbody></table>
