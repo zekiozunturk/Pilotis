@@ -74,7 +74,7 @@ export async function seedDemoPeriod(c: DemoCtx) {
   for (const [i, n] of NAMES.entries()) {
     const [vt, lo, hi] = VTYPES[i % VTYPES.length];
     const gt = Math.round(between(lo, hi) / 10) * 10, tr = i % 3 === 0;
-    const [v] = await db.insert(s.vessels).values({ name: `ÖRNEK ${n}`, imo: String(9100001 + i), flag: tr ? "TR" : pick(["MT", "PA", "LR", "MH"]), vesselType: vt, gt: String(gt), isDemo: true }).returning();
+    const [v] = await db.insert(s.vessels).values({ name: `ÖRNEK ${n}`, imo: demoImo(910000 + i), flag: tr ? "TR" : pick(["MT", "PA", "LR", "MH"]), vesselType: vt, gt: String(gt), isDemo: true }).returning();
     vessels.push({ id: v.id, gt, name: v.name, tr });
   }
 
@@ -388,3 +388,6 @@ export async function seedDemoPeriod(c: DemoCtx) {
   await chunk(meterRows, (x) => db.insert(s.assetMeters).values(x));
   return { ops: opRows.length, invoices: invRows.length, payments: payRows.length, costs: costRows.length, participations: partRows.length, overtimeRows: ext.size, missing };
 }
+
+/** Denetim hanesi tutan örnek IMO numarası (6 hane taban + denetim hanesi) */
+export function demoImo(base: number) { const d = String(base).padStart(6, "0").split("").map(Number); return d.join("") + ((d[0] * 7 + d[1] * 6 + d[2] * 5 + d[3] * 4 + d[4] * 3 + d[5] * 2) % 10); }

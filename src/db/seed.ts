@@ -6,10 +6,10 @@ import { KRP_PETKIM_REV4 } from "../data/tariffs/krp-petkim-rev4";
 import { REFERENCE_CASES } from "../data/reference-cases";
 import { TERMS } from "../data/terms";
 import { sql } from "drizzle-orm";
-import { seedDemoPeriod } from "./demo-period";
+import { demoImo, seedDemoPeriod } from "./demo-period";
 
 async function main() {
-  await db.execute(sql`TRUNCATE report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -90,8 +90,8 @@ async function main() {
   ]);
   const [yardFac] = await db.insert(s.facilities).values({ name: "ÖRNEK Tersane Rıhtımı", type: "SHIPYARD", ownerPartyId: yard.id, isDemo: true }).returning();
 
-  const [v1] = await db.insert(s.vessels).values({ name: "ÖRNEK AURORA", imo: "9000001", flag: "MT", vesselType: "Chemical Tanker", gt: "8450", nt: "4020", dwt: "12900", loa: "128.60", beam: "20.40", isDemo: true }).returning();
-  const [v2] = await db.insert(s.vessels).values({ name: "ÖRNEK MARMARA STAR", imo: "9000002", flag: "TR", vesselType: "General Cargo", gt: "2980", isDemo: true }).returning();
+  const [v1] = await db.insert(s.vessels).values({ name: "ÖRNEK AURORA", imo: demoImo(900000), flag: "MT", vesselType: "Chemical Tanker", gt: "8450", nt: "4020", dwt: "12900", loa: "128.60", beam: "20.40", isDemo: true }).returning();
+  const [v2] = await db.insert(s.vessels).values({ name: "ÖRNEK MARMARA STAR", imo: demoImo(900001), flag: "TR", vesselType: "General Cargo", gt: "2980", isDemo: true }).returning();
   await db.insert(s.vessels).values({ name: "ÖRNEK YENİ İNŞA 101", altOfficialId: "Tersane inşa no 101", vesselType: "Yeni inşa (GT bilinmiyor)", isDemo: true });
 
   const [pc] = await db.insert(s.portCalls).values({ ref: "PC-2026-000001", vesselId: v1.id, agentPartyId: agent.id, lastPort: "Aliağa", cargoCondition: "EMPTY_NOT_CLEANED", repairPurpose: "Klas bakımı", isDemo: true }).returning();
@@ -200,6 +200,9 @@ async function main() {
     existing: { agent: agent.id, yard: yard.id, owner: owner.id, yardFac: yardFac.id, base: base.id },
   });
   console.log("Örnek dönem:", demo);
+  // Sicil no ve tesis kodu (Excel aktarımında tekil anahtar; baştaki sıfırlar korunur)
+  await db.execute(sql`UPDATE personnel p SET staff_no = lpad(x.n::text, 6, '0') FROM (SELECT id, row_number() OVER (ORDER BY full_name) + 100 AS n FROM personnel) x WHERE x.id = p.id`);
+  await db.execute(sql`UPDATE facilities f SET code = 'TS-' || lpad(x.n::text, 3, '0') FROM (SELECT id, row_number() OVER (ORDER BY name) AS n FROM facilities) x WHERE x.id = f.id`);
   for (let i = 0; i < rows.length; i += 500) await db.insert(s.shifts).values(rows.slice(i, i + 500));
 
   // Terminoloji

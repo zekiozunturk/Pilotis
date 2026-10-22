@@ -64,6 +64,20 @@
       "when": 1792666547086,
       "tag": "0008_raporlar",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792668496623,
+      "tag": "0009_excel_aktarim",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792668631306,
+      "tag": "0010_maliyet_kaynak",
+      "breakpoints": true
     }
   ]
 }

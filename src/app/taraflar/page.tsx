@@ -1,3 +1,4 @@
+import { DataToolbar } from "@/components/DataToolbar";
 import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
@@ -13,7 +14,7 @@ export default async function Parties() {
   const VER: Record<string, string> = { UNVERIFIED: "Doğrulanmadı", SOURCE_FOUND: "Kaynak bulundu", VERIFIED: "Doğrulandı" };
   return (
     <>
-      <div className="pagehead"><div><h1>Taraflar ve tesisler</h1><div className="muted">Bir şirket birden fazla rol üstlenebilir; kurumlar tek bir "devlet" kaydında birleştirilmez.</div></div></div>
+      <div className="pagehead"><div><h1>Taraflar ve tesisler</h1><div className="muted">Bir şirket birden fazla rol üstlenebilir; kurumlar tek bir "devlet" kaydında birleştirilmez.</div></div><DataToolbar entity="taraflar" reportHref="/analiz/rapor" extra={<a className="btn secondary" href="/api/disa-aktar/tesisler?withId=1" download>Tesisleri Excel'e aktar</a>} /></div>
       <div className="tablewrap" style={{ marginBottom: 20 }}>
         <table>
           <thead><tr><th>Taraf</th><th>Tür</th><th>Roller</th><th>VKN</th><th>İletişim</th></tr></thead>

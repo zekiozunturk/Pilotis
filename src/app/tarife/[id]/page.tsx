@@ -59,7 +59,10 @@ export default async function VersionPage({ params }: { params: Promise<{ id: st
           <h1>{v.row.label} <span className={`badge ${tone(v.row.status)}`}>{STATUS_LABELS[v.row.status]}</span> {v.row.isDemo && <span className="badge demo">ÖRNEK</span>}</h1>
           <div className="muted">{fmtDT(v.row.validFrom)} – {fmtDT(v.row.validTo)} · {v.row.currency} · rev {v.row.rev}{v.row.changeNote ? ` · ${v.row.changeNote}` : ""}</div>
         </div>
-        <div className="toolbar">
+        <div className="toolbar datatools" role="toolbar" aria-label="Veri işlemleri">
+          {editable && ["SYSTEM_ADMIN", "BUSINESS_MANAGER", "TARIFF_OFFICER"].includes(role) && <Link className="btn secondary" href={`/aktarim?varlik=fiyat-listesi&hedef=${v.row.id}`}>Fiyat listesini Excel'den al</Link>}
+          <a className="btn secondary" href={`/api/disa-aktar/fiyat-listesi?target=${v.row.id}`} download>Fiyat listesini Excel'e aktar</a>
+          <a className="btn secondary" href="#gecmis">Sürüm geçmişi</a>
           {editable && <Link className="btn secondary" href={`/tarife/${v.row.id}/duzenle`}>Düzenle</Link>}
           {siblings.length > 1 && <Link className="btn secondary" href={`/tarife/karsilastir?a=${v.row.parentVersionId ?? siblings.find((x) => x.id !== v.row.id)!.id}&b=${v.row.id}`}>Karşılaştır</Link>}
         </div>
@@ -163,7 +166,7 @@ export default async function VersionPage({ params }: { params: Promise<{ id: st
       <div className="grid g2">
         <div className="card"><h2>Endeksle yeni sürüm türet</h2><DeriveForm parentId={v.row.id} parentLabel={v.row.label} /></div>
         <div className="card">
-          <h2>Değişiklik geçmişi</h2>
+          <h2 id="gecmis">Değişiklik geçmişi</h2>
           <table><tbody>{history.map((h) => <tr key={h.id}><td style={{ whiteSpace: "nowrap", fontSize: 12 }}>{fmtDT(h.at)}</td><td className="mono" style={{ fontSize: 11.5 }}>{h.action}</td><td style={{ fontSize: 12 }}>{h.actorId ? ROLE_LABELS[h.actorId as keyof typeof ROLE_LABELS] ?? h.actorId : ""}{h.reason ? ` — ${h.reason}` : ""}</td></tr>)}
             {history.length === 0 && <tr><td className="muted">Kayıt yok.</td></tr>}</tbody></table>
         </div>

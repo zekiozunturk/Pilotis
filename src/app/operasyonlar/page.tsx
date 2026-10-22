@@ -1,3 +1,4 @@
+import { DataToolbar } from "@/components/DataToolbar";
 import Link from "next/link";
 import { db, schema as s } from "@/db";
 import { desc, eq, or } from "drizzle-orm";
@@ -25,7 +26,7 @@ export default async function Operations() {
     <>
       <div className="pagehead">
         <div><h1>Operasyonlar</h1><div className="muted">Her iş tekil operasyon kimliğiyle izlenir; durumlar bağımsız kümelerdir.</div></div>
-        <Link className="btn orange" href={scope.external ? "/portal" : "/operasyonlar/yeni"}>+ Yeni talep</Link>
+        {scope.external ? <Link className="btn orange" href="/portal">+ Yeni talep</Link> : <DataToolbar entity="operasyonlar" newHref="/operasyonlar/yeni" reportHref="/analiz/rapor" />}
       </div>
       <div className="tablewrap">
         <table>

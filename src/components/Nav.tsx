@@ -7,7 +7,7 @@ const GROUPS: { title: string; items: [string, string, string][] }[] = [
   { title: "Analiz", items: [["/analiz", "◔", "Performans & analiz"]] },
   { title: "Kayıtlar", items: [["/gemiler", "▲", "Gemiler"], ["/taraflar", "◇", "Taraflar & tesisler"], ["/filo", "⛴", "Filo"], ["/personel", "●", "Personel"]] },
   { title: "Kural & Tarife", items: [["/katalog", "≡", "Hizmet kataloğu"], ["/tarife", "∑", "Tarife & fiyat listesi"], ["/kurlar", "₺", "Döviz kurları"], ["/kurallar", "§", "Mevzuat / kurallar"], ["/acik-konular", "!", "Açık konular"]] },
-  { title: "Sistem", items: [["/terminoloji", "Aa", "Terminoloji"], ["/ayarlar", "⚙", "Ayarlar"]] },
+  { title: "Sistem", items: [["/terminoloji", "Aa", "Terminoloji"], ["/aktarim", "⇅", "Excel aktarım"], ["/ayarlar", "⚙", "Ayarlar"]] },
 ];
 
 const EXTERNAL: string[] = ["/portal", "/operasyonlar", "/gemiler"];

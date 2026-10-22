@@ -109,6 +109,7 @@ export const partyRoles = pgTable("party_roles", {
 
 export const facilities = pgTable("facilities", {
   id: id(),
+  code: text("code").unique(),            // tesis kodu — aktarımda tekil anahtar
   name: text("name").notNull(),
   type: facilityType("type").notNull(),
   ownerPartyId: text("owner_party_id").references(() => parties.id),
@@ -269,6 +270,7 @@ export const timelineEvents = pgTable("timeline_events", {
 export const personnel = pgTable("personnel", {
   id: id(),
   fullName: text("full_name").notNull(),
+  staffNo: text("staff_no").unique(),     // sicil no — Excel aktarımında tekil anahtar (baştaki sıfırlar korunur)
   title: text("title").notNull(),
   unit: text("unit"),
   managerId: text("manager_id"),
@@ -649,6 +651,7 @@ export const costEntries = pgTable("cost_entries", {
   allocationBasis: text("allocation_basis"),
   source: text("source").default("MANUAL").notNull(),
   importBatchId: text("import_batch_id"),
+  sourceRef: text("source_ref").unique(),   // kaynak belge no — tekrar yüklemede mükerrer kayıt önlenir
 });
 
 /** Gerekçeli, yetkili onaylı elle gelir dağıtımı (doğrudan/süre/ağırlık yöntemlerinin yerine geçer) */
@@ -724,3 +727,48 @@ export const reportSchedules = pgTable("report_schedules", {
   createdBy: text("created_by").notNull(),
   createdAt: createdAt(),
 });
+
+// ───────────── EXCEL AKTARIM ─────────────
+export const importBatches = pgTable("import_batches", {
+  id: id(),
+  no: text("no").notNull().unique(),          // AKT-20261022-XXXX
+  entity: text("entity").notNull(),
+  fileName: text("file_name").notNull(),
+  fileHash: text("file_hash").notNull(),
+  storageKey: text("storage_key").notNull(),
+  sheet: text("sheet"),
+  headerRow: integer("header_row"),
+  mapping: jsonb("mapping"),                  // { kaynakKolon: hedefAlan }
+  options: jsonb("options"),                  // { key, emptyCell, mode, formulas, target }
+  status: text("status").default("UPLOADED").notNull(), // UPLOADED | VALIDATED | AWAITING_APPROVAL | RUNNING | DONE | DRY_RUN | FAILED | REVERTED | PARTIALLY_REVERTED
+  summary: jsonb("summary"),
+  progress: integer("progress").default(0).notNull(),
+  total: integer("total").default(0).notNull(),
+  createdBy: text("created_by").notNull(),
+  approvedBy: text("approved_by"),
+  message: text("message"),
+  createdAt: createdAt(),
+  finishedAt: ts("finished_at"),
+});
+export const importRows = pgTable("import_rows", {
+  id: id(),
+  batchId: text("batch_id").notNull().references(() => importBatches.id),
+  rowNo: integer("row_no").notNull(),
+  action: text("action").notNull(),           // INSERT | UPDATE | SKIP | ERROR
+  entityId: text("entity_id"),
+  before: jsonb("before"),
+  after: jsonb("after"),
+  errors: jsonb("errors"),
+  warnings: jsonb("warnings"),
+  appliedAt: ts("applied_at"),
+  revertNote: text("revert_note"),
+}, (t) => [index("improw_batch_idx").on(t.batchId, t.rowNo)]);
+export const importMappings = pgTable("import_mappings", {
+  id: id(),
+  entity: text("entity").notNull(),
+  name: text("name").notNull(),
+  profile: text("profile"),                   // kaynak sistem: ETA, eski portal, elle…
+  mapping: jsonb("mapping").notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("impmap_uq").on(t.entity, t.name)]);

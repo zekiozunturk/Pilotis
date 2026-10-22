@@ -1,3 +1,4 @@
+import { DataToolbar } from "@/components/DataToolbar";
 import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { ASSET_LABELS, OPERATOR } from "@/data/catalog";
@@ -11,7 +12,7 @@ export default async function Fleet() {
   const order = ["TUG", "PILOT_BOAT", "MOORING_BOAT", "SURFACE_CLEANING_VESSEL"];
   return (
     <>
-      <div className="pagehead"><div><h1>Filo</h1><div className="muted">Kaynak: <a href={`${OPERATOR.website}/filo/`} target="_blank" rel="noreferrer">yalovapilotaj.com/filo</a> · Araç sayısı sabit kodlanmaz.</div></div></div>
+      <div className="pagehead"><div><h1>Filo</h1><div className="muted">Kaynak: <a href={`${OPERATOR.website}/filo/`} target="_blank" rel="noreferrer">yalovapilotaj.com/filo</a> · Araç sayısı sabit kodlanmaz.</div></div><DataToolbar entity="filo" reportHref="/analiz/romorkor" /></div>
       <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>AK-01 · Teknik özellikler doğrulanmadı</b>Römorkörler Römork-1…7 (kısaltma R1…R7) olarak adlandırıldı; sitede yayımlanan 4 römorkör (Yalova 2–5) R1–R4 ile eşleştirildi, R5–R7 için kayıt bilgisi bekleniyor. Çeki gücü, IMO/MMSI ve sertifikalar gelene kadar römorkör karar motoru bu araçları uygunluk hesabına almaz; değerler uydurulmaz.</div></div>
       {order.map((t) => {
         const list = assets.filter((a) => a.type === t);

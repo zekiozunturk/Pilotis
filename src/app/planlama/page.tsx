@@ -6,6 +6,7 @@ import { weekBoard, exceptionsThisMonth, EXCEPTION_MONTHLY_LIMIT } from "@/lib/p
 import { profileByCode, PROFILES } from "@/lib/planning/profiles";
 import { Term } from "@/components/Term";
 import { ShiftForm, CrewSuggest } from "./forms";
+import { DataToolbar } from "@/components/DataToolbar";
 
 export const metadata = { title: "Planlama" };
 const DAY = 86_400_000, TZ = 3 * 3600_000;
@@ -54,6 +55,7 @@ export default async function Planning({ searchParams }: { searchParams: Promise
           <Link className="btn secondary" href={`/planlama?hafta=${ymd(ws + 7 * DAY)}`}>Sonraki hafta →</Link>
           <Link className="btn secondary" href={`/planlama?hafta=${ymd(ws)}${showAll ? "" : "&tumu=1"}`}>{showAll ? "Yalnız bu hafta görevliler" : `Tüm personel (+${hidden} izinde)`}</Link>
           <Link className="btn" href="/planlama/rotasyon">↻ Ekip rotasyonu</Link>
+          <DataToolbar entity="vardiyalar" reportHref="/analiz/plan" extra={<Link className="btn secondary" href="/aktarim?varlik=calisma-saatleri">Gerçekleşen saatleri al</Link>} />
         </div>
       </div>
 

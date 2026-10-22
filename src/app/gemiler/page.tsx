@@ -1,3 +1,4 @@
+import { DataToolbar } from "@/components/DataToolbar";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 import { fmtNum } from "@/lib/format";
@@ -9,7 +10,7 @@ export default async function Vessels() {
   const rows = await db.select().from(s.vessels).orderBy(asc(s.vessels.name));
   return (
     <>
-      <div className="pagehead"><div><h1>Gemiler</h1><div className="muted">GT, NT ve DWT ayrı alanlardır; bilinmeyen değer boş kalır, sıfır kabul edilmez.</div></div></div>
+      <div className="pagehead"><div><h1>Gemiler</h1><div className="muted">GT, NT ve DWT ayrı alanlardır; bilinmeyen değer boş kalır, sıfır kabul edilmez.</div></div><DataToolbar entity="gemiler" newHref="#yeni-gemi" reportHref="/analiz/rapor" /></div>
       <div className="grid g3">
         <div className="tablewrap" style={{ gridColumn: "span 2", alignSelf: "start" }}>
           <table>
@@ -20,7 +21,7 @@ export default async function Vessels() {
             </tbody>
           </table>
         </div>
-        <div className="card" style={{ alignSelf: "start" }}><h2>Yeni gemi kartı</h2><VesselForm /></div>
+        <div className="card" id="yeni-gemi" style={{ alignSelf: "start" }}><h2>Yeni gemi kartı</h2><VesselForm /></div>
       </div>
     </>
   );

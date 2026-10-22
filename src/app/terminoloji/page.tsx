@@ -1,3 +1,4 @@
+import { DataToolbar } from "@/components/DataToolbar";
 import { asc } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { requireInternalPage, currentRole } from "@/lib/session";
@@ -18,8 +19,7 @@ export default async function Terminology() {
           <div className="muted">Mevzuat terimi ile işletme dili ayrımı · {rows.length} terim · 6 dil · onaylı çeviri {reviewed}/{rows.length * 5}. Numaralar kalıcıdır: ekranlarda <span className="mono">Palamar<sup style={{ color: "var(--orange)" }}>5</sup></span> biçiminde gösterilir.</div>
         </div>
         <div className="toolbar">
-          {canEdit && <a className="btn orange" href="#yeni-terim">+ Yeni terim</a>}
-          <a className="btn secondary" href="/api/terminoloji">Excel'e aktar (CSV)</a>
+          <DataToolbar entity="terminoloji" newHref={canEdit ? "#yeni-terim" : null} extra={<a className="btn secondary" href="/api/terminoloji">CSV</a>} />
         </div>
       </div>
       <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>Çeviriler taslaktır</b>Yabancı dil karşılıkları denizcilik uzmanı veya onaylı çevirmen kontrolünden geçmeden hukuki ya da bağlayıcı metinde kullanılmaz. Onay, kontrol eden kişinin adıyla kaydedilir.</div></div>

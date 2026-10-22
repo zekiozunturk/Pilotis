@@ -196,3 +196,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); out
 .loadbar { height: 100%; width: 40%; background: var(--orange); animation: loadbar 1.1s ease-in-out infinite; }
 @keyframes loadbar { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
 .empty { padding: 24px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius); }
+
+/* Excel aktarım sihirbazı */
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.grid2 > * { min-width: 0; }
+.wizard .form { display: grid; gap: 12px; }
+.wizard label select, .wizard label input { margin-top: 4px; }
+.steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 12px; flex-wrap: wrap; }
+.steps li { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--grey-bg); color: var(--grey-fg); }
+.steps li.on { background: var(--navy-800); color: var(--btn-fg); }
+.steps li.done { background: var(--ok-bg); color: var(--ok); }
+.wizard .tile { cursor: pointer; text-align: left; font: inherit; color: var(--text); }
+.wizard .tile.on { outline: 2px solid var(--orange); }
+.wizard .tile .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.wizard fieldset.opts { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+.wizard fieldset.opts legend { font-size: 12px; font-weight: 700; padding: 0 4px; }
+.wizard select.invalid { border-color: var(--bad); }
+.wizard [role=progressbar] { height: 8px; border-radius: 999px; background: var(--grey-bg); position: relative; overflow: hidden; animation: none; width: 100%; }
+.wizard [role=progressbar]::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--orange); transition: width .3s; }
