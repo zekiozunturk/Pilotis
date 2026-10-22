@@ -1,3 +1,4 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 import { SERVICE_LABELS } from "@/data/catalog";
@@ -5,6 +6,7 @@ import { SERVICE_LABELS } from "@/data/catalog";
 export const metadata = { title: "Hizmet kataloğu" };
 
 export default async function Catalog() {
+  await requireInternalPage();
   const rows = await db.select().from(s.operationTypes).orderBy(asc(s.operationTypes.code));
   return (
     <>

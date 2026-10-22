@@ -14,3 +14,19 @@ export async function currentRole(): Promise<Role> {
   const r = c.get("pilotis_role")?.value as Role | undefined;
   return r && r in ROLE_LABELS ? r : "OPERATIONS_MANAGER";
 }
+
+export const EXTERNAL_ROLES: Role[] = ["CUSTOMER", "BILLING_PARTY"];
+
+/** Dış kullanıcı (müşteri/muhatap) hangi firma adına? Geliştirmede çerezle seçilir; canlıda kullanıcı-firma ilişkisinden gelir. */
+export async function currentScope(): Promise<{ role: Role; partyId: string | null; external: boolean }> {
+  const role = await currentRole();
+  const c = await cookies();
+  const external = EXTERNAL_ROLES.includes(role);
+  return { role, external, partyId: external ? c.get("pilotis_party")?.value ?? null : null };
+}
+
+/** Yalnız işletme personeline açık sayfalar: dış kullanıcıya varlığı dahi gösterilmez. */
+export async function requireInternalPage() {
+  const { notFound } = await import("next/navigation");
+  if ((await currentScope()).external) notFound();
+}

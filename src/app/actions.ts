@@ -1,11 +1,15 @@
 "use server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, schema as s } from "@/db";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { currentRole, ROLE_LABELS } from "@/lib/session";
+import { currentRole, currentScope, ROLE_LABELS } from "@/lib/session";
+import { declarationImpact, type Declaration } from "@/lib/declaration";
+import { generateDocument } from "@/lib/docs/service";
+import { DOC_TYPES, type DocType } from "@/lib/docs/builders";
+import { storage } from "@/lib/storage";
 import { canTransition, OP_STATUS_TRANSITIONS, type Role } from "@/lib/workflow";
 import { computeOperation, loadOperation, nextOperationRef, recordAudit } from "@/lib/ops";
 import { createHash } from "node:crypto";
@@ -16,7 +20,10 @@ import type { CalcResult, CalcInput } from "@/lib/tariff/types";
 export async function setRole(formData: FormData) {
   const role = String(formData.get("role"));
   if (!(role in ROLE_LABELS)) return;
-  (await cookies()).set("pilotis_role", role, { httpOnly: true, sameSite: "lax", path: "/" });
+  const c = await cookies();
+  c.set("pilotis_role", role, { httpOnly: true, sameSite: "lax", path: "/" });
+  const party = String(formData.get("party") || "");
+  if (party) c.set("pilotis_party", party, { httpOnly: true, sameSite: "lax", path: "/" }); else c.delete("pilotis_party");
   revalidatePath("/", "layout");
 }
 
@@ -171,21 +178,35 @@ async function closeOperationImpl(formData: FormData) {
 async function verifyDeclarationImpl(formData: FormData) {
   await requireRole(["SHORE_OPS", "OPERATIONS_MANAGER"]);
   const ref = String(formData.get("ref"));
-  const gtRaw = String(formData.get("gt") || "").replace(",", ".");
-  const engine = String(formData.get("engine") || "");
-  const note = String(formData.get("note") || "");
   const o = await loadOperation(ref);
   if (!o) throw new Error("Operasyon bulunamadı");
+  const str = (k: string) => { const v = String(formData.get(k) ?? "").trim(); return v === "" ? null : v; };
+  const gtRaw = str("gt");
+  const next: Declaration = {
+    gt: gtRaw ? Number(gtRaw.replace(",", ".")) : null, engine: str("engine"), rudder: str("rudder"),
+    cargoCondition: str("cargoCondition"), dgClass: str("dgClass"), unNumber: str("unNumber"),
+    gasFreeCert: formData.get("gasFreeCert") === "on" ? true : null, note: str("note"),
+  };
+  const prev = o.requests.at(-1)?.payload as Declaration | undefined;
+  const impact = declarationImpact(prev, next);
   const nextVersion = (o.requests.at(-1)?.version ?? 0) + 1;
   await db.insert(s.serviceRequests).values({
     operationId: o.op.id, version: nextVersion, layer: "FIELD_VERIFIED",
-    payload: { gt: gtRaw ? Number(gtRaw) : null, engine, note }, reason: note || "Saha doğrulaması",
+    payload: { ...prev, ...Object.fromEntries(Object.entries(next).filter(([, v]) => v !== null)) }, reason: next.note || "Saha doğrulaması",
   });
   if (!o.events.some((e) => e.type === "DECLARATION_CHECKED")) {
-    await db.insert(s.timelineEvents).values({ operationId: o.op.id, type: "DECLARATION_CHECKED", occurredAt: new Date(), note });
+    await db.insert(s.timelineEvents).values({ operationId: o.op.id, type: "DECLARATION_CHECKED", occurredAt: new Date(), note: next.note });
   }
-  await recordAudit("operation", ref, "FIELD_VERIFIED", { gt: gtRaw, engine, note });
+  let reapproval = false;
+  if (impact.requiresReapproval && o.billing?.decision === "APPROVED") {
+    await db.update(s.billingApprovals).set({ decision: "PENDING", decidedAt: null, note: `Beyan değişti (v${nextVersion}): ${impact.changes.map((c) => c.label).join(", ")}` }).where(eq(s.billingApprovals.operationId, o.op.id));
+    await db.update(s.operations).set({ approvalStatus: "AWAITING_BILLING_PARTY" }).where(eq(s.operations.id, o.op.id));
+    reapproval = true;
+  }
+  await recordAudit("operation", ref, "FIELD_VERIFIED", { version: nextVersion, impact });
   revalidatePath(`/operasyonlar/${ref}`);
+  if (!impact.changes.length) return `v${nextVersion} kaydedildi — beyanla uyumlu, değişiklik yok`;
+  return `v${nextVersion} kaydedildi — değişen: ${impact.changes.map((c) => `${c.label} ${c.from ?? "—"}→${c.to}`).join(", ")}. Etkilenen: ${impact.affected.join(", ")}.${reapproval ? " Fatura muhatabından YENİDEN ONAY istendi." : ""}`;
 }
 
 // ───────── Fatura muhatabı ─────────
@@ -203,19 +224,79 @@ async function setBillingPartyImpl(formData: FormData) {
 }
 
 async function decideBillingImpl(formData: FormData) {
-  await requireRole(["BILLING_PARTY", "OPERATIONS_MANAGER"]);
+  const role = await requireRole(["BILLING_PARTY", "OPERATIONS_MANAGER"]);
   const ref = String(formData.get("ref"));
   const decision = String(formData.get("decision")) as "APPROVED" | "REJECTED";
   const person = String(formData.get("authorizedPerson") || "").trim();
   const taxVerified = formData.get("taxVerified") === "on";
+  const signature = String(formData.get("signature") || "");
   if (decision === "APPROVED" && (!person || !taxVerified)) throw new Error("Onay için yetkili kişi ve vergi doğrulaması gerekli");
   const o = await loadOperation(ref);
-  if (!o) throw new Error("Operasyon bulunamadı");
-  await db.update(s.billingApprovals).set({ decision, authorizedPerson: person || null, taxVerified, decidedAt: new Date(), approvedDocVersionId: `TALEPNAME_V${o.requests.at(-1)?.version ?? 1}` })
+  if (!o || !o.billing) throw new Error("Önce fatura muhatabı atanmalı");
+  const scope = await currentScope();
+  if (scope.external && scope.partyId !== o.billing.billingPartyId) throw new Error("Yalnız atanmış fatura muhatabı karar verebilir");
+  // Onay, içeriği sabitlenmiş talepname sürümüne verilir
+  const doc = await generateDocument(ref, "TALEPNAME", role);
+  let sigKey: string | null = null;
+  if (signature.startsWith("data:image/png;base64,")) {
+    const png = Buffer.from(signature.slice(22), "base64");
+    if (png.byteLength > 400_000) throw new Error("İmza görüntüsü çok büyük");
+    sigKey = (await storage.put(`${ref}/imza/${doc.fileName.replace(".pdf", "")}_${Date.now()}.png`, png)).key;
+  }
+  await db.insert(s.documentApprovals).values({
+    documentVersionId: doc.id, partyId: o.billing.billingPartyId, approverName: person || "—", level: sigKey ? "DRAWN" : "OTP_ACCOUNT",
+    decision, signatureImageKey: sigKey, userAgent: (await headers()).get("user-agent")?.slice(0, 200) ?? null,
+  });
+  await db.update(s.billingApprovals).set({ decision, authorizedPerson: person || null, taxVerified, decidedAt: new Date(), approvedDocVersionId: doc.id, note: null })
     .where(eq(s.billingApprovals.operationId, o.op.id));
   await db.update(s.operations).set({ approvalStatus: decision === "APPROVED" ? "OPS_REVIEW" : "AWAITING_BILLING_PARTY" }).where(eq(s.operations.id, o.op.id));
-  await recordAudit("operation", ref, `BILLING_${decision}`, { person, taxVerified });
+  await recordAudit("operation", ref, `BILLING_${decision}`, { person, taxVerified, doc: doc.fileName, level: sigKey ? "DRAWN" : "OTP_ACCOUNT" });
   revalidatePath(`/operasyonlar/${ref}`);
+  return decision === "APPROVED" ? `Onay ${doc.fileName} sürümüne bağlandı` : "Ret kaydedildi";
+}
+
+// ───────── Belgeler ─────────
+async function generateDocImpl(formData: FormData) {
+  const role = await requireRole(["OPERATIONS_MANAGER", "SHORE_OPS", "PLANNER", "ACCOUNTING"]);
+  const ref = String(formData.get("ref"));
+  const type = String(formData.get("docType")) as DocType;
+  if (!(type in DOC_TYPES)) throw new Error("Bilinmeyen belge türü");
+  const r = await generateDocument(ref, type, role);
+  revalidatePath(`/operasyonlar/${ref}`);
+  if (!r.created) return `İçerik değişmedi — mevcut ${r.fileName} geçerli`;
+  return `${r.fileName} oluşturuldu${r.invalidatedApproval ? " · içerik değiştiği için fatura muhatabı onayı yenilenmeli" : ""}`;
+}
+
+async function uploadWetSignedImpl(formData: FormData) {
+  const role = await requireRole(["OPERATIONS_MANAGER", "SHORE_OPS", "ACCOUNTING"]);
+  const ref = String(formData.get("ref"));
+  const baseId = String(formData.get("documentVersionId"));
+  const signer = String(formData.get("signer") || "").trim();
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) throw new Error("Dosya seçin");
+  if (!signer) throw new Error("İmzalayan kişi gerekli");
+  if (file.size > 15_000_000) throw new Error("Dosya 15 MB'tan büyük olamaz");
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const isPdf = buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
+  const isJpg = buf[0] === 0xff && buf[1] === 0xd8;
+  const isPng = buf[0] === 0x89 && buf[1] === 0x50;
+  if (!isPdf && !isJpg && !isPng) throw new Error("Yalnız PDF, JPG veya PNG kabul edilir (içerik imzası kontrol edildi)");
+  const [base] = await db.select().from(s.documentVersions).where(eq(s.documentVersions.id, baseId));
+  if (!base) throw new Error("Belge bulunamadı");
+  const [maxV] = await db.select({ v: s.documentVersions.version }).from(s.documentVersions)
+    .where(and(eq(s.documentVersions.operationId, base.operationId), eq(s.documentVersions.docType, base.docType))).orderBy(desc(s.documentVersions.version)).limit(1);
+  const version = (maxV?.v ?? 0) + 1;
+  const ext = isPdf ? "pdf" : isJpg ? "jpg" : "png";
+  const fileName = base.fileName.replace(/_V\d+\.pdf$/, `_V${String(version).padStart(2, "0")}_ISLAK_IMZA.${ext}`);
+  const stored = await storage.put(`${ref}/${fileName}`, buf);
+  const [row] = await db.insert(s.documentVersions).values({
+    operationId: base.operationId, docType: base.docType, version, fileName, storageKey: stored.key, sizeBytes: stored.size, sha256: stored.sha256,
+    sourceSnapshotHash: base.sourceSnapshotHash, origin: "UPLOADED_WET_SIGNED", contentType: isPdf ? "application/pdf" : `image/${ext === "jpg" ? "jpeg" : "png"}`,
+    generatedBy: role, signature: "WET_UPLOADED", signedBy: signer, signedAt: new Date(),
+  }).returning();
+  await recordAudit("document", row.id, "UPLOAD_WET_SIGNED", { base: base.fileName, sha256: stored.sha256, signer });
+  revalidatePath(`/operasyonlar/${ref}`);
+  return `${fileName} yüklendi (V${version} · ${base.fileName} içeriğine dayanır)`;
 }
 
 // ───────── Hesap kaydı ─────────
@@ -241,7 +322,7 @@ async function saveCalculationImpl(formData: FormData) {
 // ───────── Durum döndüren sarmalayıcılar (sunucudan başarı gelmeden 'kaydedildi' denmez) ─────────
 export type ActionState = { ok: boolean; message: string; at?: string } | null;
 async function run(fn: () => Promise<unknown>, okMsg: string): Promise<ActionState> {
-  try { await fn(); return { ok: true, message: okMsg, at: new Date().toISOString() }; }
+  try { const r = await fn(); return { ok: true, message: typeof r === "string" ? r : okMsg, at: new Date().toISOString() }; }
   catch (e) { return { ok: false, message: (e as Error).message || "İşlem başarısız" }; }
 }
 export async function recordEvent(_: ActionState, formData: FormData): Promise<ActionState> { return run(() => recordEventImpl(formData), "Olay sunucuya kaydedildi"); }
@@ -269,3 +350,5 @@ export async function simulateCalc(_: SimState, f: FormData): Promise<SimState> 
     return { ok: true, result: calcEngine(input, v, await ruleStatusMap()) };
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }
+export async function generateDoc(_: ActionState, f: FormData): Promise<ActionState> { return run(() => generateDocImpl(f), "Belge oluşturuldu"); }
+export async function uploadWetSigned(_: ActionState, f: FormData): Promise<ActionState> { return run(() => uploadWetSignedImpl(f), "Yüklendi"); }

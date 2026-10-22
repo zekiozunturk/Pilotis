@@ -1,3 +1,4 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 import { ROLE_TYPE_LABELS } from "@/lib/labels";
@@ -5,6 +6,7 @@ import { ROLE_TYPE_LABELS } from "@/lib/labels";
 export const metadata = { title: "Taraflar & tesisler" };
 
 export default async function Parties() {
+  await requireInternalPage();
   const parties = await db.select().from(s.parties).orderBy(asc(s.parties.kind), asc(s.parties.legalName));
   const roles = await db.select().from(s.partyRoles);
   const facilities = await db.select().from(s.facilities);

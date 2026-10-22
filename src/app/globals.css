@@ -99,7 +99,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--navy-700); 
 .alert.bad { background: var(--bad-bg); color: var(--bad); }
 .alert.ok { background: var(--ok-bg); color: var(--ok); }
 .alert.info { background: var(--info-bg); color: var(--info); }
-.alert b { display: block; }
+.alert > div > b:first-child { display: block; }
 
 .statusrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
 @media (max-width: 1100px) { .statusrow { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

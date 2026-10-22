@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { currentScope } from "@/lib/session";
 import { dashboardData } from "@/lib/ops";
 import { STATUS_SETS } from "@/lib/labels";
 import { STATUS_LABELS, OPERATOR } from "@/data/catalog";
@@ -10,6 +12,7 @@ const opLabel = STATUS_SETS.find((x) => x.key === "opStatus")!.values;
 const accLabel = STATUS_SETS.find((x) => x.key === "accrualStatus")!.values;
 
 export default async function Home() {
+  if ((await currentScope()).external) redirect("/portal");
   const { ops, fleet, rules, issues } = await dashboardData();
   const active = ops.filter((o) => ["TRANSIT", "ON_SITE", "STARTED", "PAUSED"].includes(o.op.opStatus));
   const open = ops.filter((o) => !["COMPLETED", "CANCELLED", "PARTIAL"].includes(o.op.opStatus));

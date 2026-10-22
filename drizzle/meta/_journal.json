@@ -8,6 +8,13 @@
       "when": 1792634512997,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792635652120,
+      "tag": "0001_faz2_portal_docs",
+      "breakpoints": true
     }
   ]
 }

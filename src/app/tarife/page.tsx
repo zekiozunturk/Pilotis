@@ -1,3 +1,4 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { DEMO_TARIFF, STATUS_LABELS } from "@/data/catalog";
 import { fmtDT } from "@/lib/format";
@@ -6,6 +7,7 @@ import { Simulator } from "./sim";
 export const metadata = { title: "Tarife & hesap" };
 
 export default async function Tariffs() {
+  await requireInternalPage();
   const fams = await db.select().from(s.tariffFamilies);
   const vers = await db.select().from(s.tariffVersions);
   return (

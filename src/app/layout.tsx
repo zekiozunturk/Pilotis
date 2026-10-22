@@ -2,7 +2,9 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { BRAND, OPERATOR } from "@/data/catalog";
-import { currentRole, ROLE_LABELS } from "@/lib/session";
+import { currentScope, ROLE_LABELS } from "@/lib/session";
+import { db, schema as s } from "@/db";
+import { asc, eq } from "drizzle-orm";
 import { setRole } from "./actions";
 
 export const metadata: Metadata = {
@@ -13,7 +15,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const role = await currentRole();
+  const { role, external, partyId } = await currentScope();
+  const companies = await db.select({ id: s.parties.id, name: s.parties.legalName }).from(s.parties).where(eq(s.parties.kind, "COMPANY")).orderBy(asc(s.parties.legalName));
   return (
     <html lang="tr">
       <body>
@@ -25,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <img src="/brand/pilotis-logo.png" alt="PILOTIS" style={{ width: "100%", display: "block" }} />
               </div>
             </div>
-            <Nav />
+            <Nav external={external} />
             <div className="client">
               İşletme
               <b>{OPERATOR.legalName}</b>
@@ -39,6 +42,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <span title="Geliştirme oturumu: gerçek kimlik doğrulama ve MFA canlıya geçişten önce eklenecek">Rol (geliştirme):</span>
                 <select name="role" defaultValue={role} style={{ width: 220 }}>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <select name="party" defaultValue={partyId ?? ""} style={{ width: 210 }} title="Müşteri / fatura muhatabı rolleri için firma">
+                  <option value="">Firma (dış roller için)</option>
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <button className="btn secondary" type="submit">Uygula</button>
               </form>

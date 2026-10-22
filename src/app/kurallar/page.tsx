@@ -1,3 +1,4 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 import { STATUS_LABELS, LABEL_LABELS } from "@/data/catalog";
@@ -6,6 +7,7 @@ export const metadata = { title: "Mevzuat / kurallar" };
 const tone = (st: string) => (st === "APPROVED" || st === "IN_FORCE" ? "ok" : st === "DRAFT" ? "grey" : "warn");
 
 export default async function Rules() {
+  await requireInternalPage();
   const rows = await db.select().from(s.businessRules).orderBy(asc(s.businessRules.code));
   const sources = await db.select().from(s.regulationSources);
   return (

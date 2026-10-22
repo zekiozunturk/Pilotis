@@ -156,3 +156,15 @@ export const ASSET_LABELS: Record<string, string> = {
 export const SERVICE_LABELS: Record<string, string> = {
   PILOTAGE: "Kılavuzluk", TOWAGE: "Römorkörcülük", MOORING: "Palamar bağlama", UNMOORING: "Palamar çözme", LINE_HANDLING: "Halat", CHARTER: "Kiralama", SALVAGE_REVIEW: "Kurtarma değ.", SPECIAL: "Özel hizmet",
 };
+
+/** Portal paket kartları — kapsam metinleri işletme onayına tabidir (AK-04). */
+export const PACKAGES: { code: string; title: string; scope: string; outOfScope: string; docs: string[]; needsRepair?: boolean; review?: boolean }[] = [
+  { code: "OP-001", title: "Standart yanaşma", scope: "Kılavuzluk, gerekli römorkör desteği ve palamar bağlama", outOfScope: "Bekleme sırasında ayrıca hazır bulunma, yer değiştirme", docs: ["Tonilato belgesi", "Talepname", "Fatura muhatabı onayı"] },
+  { code: "OP-002", title: "Standart kalkış", scope: "Kılavuzluk, gerekli römorkör desteği ve palamar çözme", outOfScope: "Demirleme, refakat", docs: ["Talepname", "Fatura muhatabı onayı"] },
+  { code: "OP-005", title: "Tersane giriş (bakım-onarım)", scope: "Tersaneye giriş manevrası; bakım-onarım indirimi belgeyle değerlendirilir", outOfScope: "Yük elleçleme yapılan işlerde indirim (R-012 doğrulanıyor)", docs: ["Tersane kabul yazısı", "Bakım-onarım amacını gösteren belge", "Tonilato belgesi"], needsRepair: true },
+  { code: "OP-004", title: "Tersaneler arası transfer", scope: "Kalkış, seyir ve yanaşma bileşenleri ayrı ayrı değerlendirilir", outOfScope: "Deneme seyri", docs: ["Her iki tesisin kabulü", "Talepname"] },
+  { code: "OP-007", title: "Deneme seyri", scope: "Kılavuzluk ve gerekli römorkör refakati, süreye bağlı", outOfScope: "Klas sörveyi hizmetleri", docs: ["Deneme seyri programı", "Klas / tersane yazısı"] },
+  { code: "OP-008", title: "Demirleme", scope: "Kılavuzluk", outOfScope: "Demir yerinde hazır bulunma", docs: ["Liman başkanlığı demir yeri izni (gerekirse)"] },
+  { code: "OP-009", title: "Demirden kaldırma", scope: "Kılavuzluk", outOfScope: "—", docs: ["Talepname"] },
+  { code: "OP-022", title: "Özel hizmet inceleme talebi", scope: "Standart tarifeye uymayan işler için ön inceleme; fiyat ancak onaylı sözleşmeyle oluşur", outOfScope: "Standart hizmeti ikinci kez ücretlendirme", docs: ["İş tanımı", "Teknik ekler"], review: true },
+];

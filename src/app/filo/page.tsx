@@ -1,3 +1,4 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { ASSET_LABELS, OPERATOR } from "@/data/catalog";
 import { fmtNum } from "@/lib/format";
@@ -5,6 +6,7 @@ import { fmtNum } from "@/lib/format";
 export const metadata = { title: "Filo" };
 
 export default async function Fleet() {
+  await requireInternalPage();
   const assets = await db.select().from(s.fleetAssets);
   const order = ["TUG", "PILOT_BOAT", "MOORING_BOAT", "SURFACE_CLEANING_VESSEL"];
   return (

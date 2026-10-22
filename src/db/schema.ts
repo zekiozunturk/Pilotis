@@ -393,12 +393,59 @@ export const documentVersions = pgTable("document_versions", {
   docType: text("doc_type").notNull(),
   version: integer("version").notNull(),
   fileName: text("file_name").notNull(),
+  storageKey: text("storage_key"),
+  contentType: text("content_type").default("application/pdf").notNull(),
+  sizeBytes: integer("size_bytes"),
   sha256: text("sha256"),
+  sourceSnapshotHash: text("source_snapshot_hash"), // belgeyi üreten operasyon verisinin özeti
+  origin: text("origin").default("GENERATED").notNull(), // GENERATED | UPLOADED_WET_SIGNED
+  generatedBy: text("generated_by"),
   signature: signatureLevel("signature").default("NONE").notNull(),
   signedBy: text("signed_by"),
   signedAt: ts("signed_at"),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex("doc_op_type_ver_uq").on(t.operationId, t.docType, t.version)]);
+
+/** Onay/imza her zaman belirli bir belge sürümüne bağlıdır. */
+export const documentApprovals = pgTable("document_approvals", {
+  id: id(),
+  documentVersionId: text("document_version_id").notNull().references(() => documentVersions.id),
+  partyId: text("party_id").references(() => parties.id),
+  approverName: text("approver_name").notNull(),
+  approverTitle: text("approver_title"),
+  level: signatureLevel("level").notNull(),
+  decision: billingDecision("decision").notNull(),
+  signatureImageKey: text("signature_image_key"),
+  userAgent: text("user_agent"),
+  note: text("note"),
+  decidedAt: ts("decided_at").defaultNow().notNull(),
+});
+
+export const cartStatus = pgEnum("cart_status", ["OPEN", "SUBMITTED", "ABANDONED"]);
+
+/** Sepet: talep toplama alanı — kaynak rezervasyonu veya operasyon izni değildir. */
+export const carts = pgTable("carts", {
+  id: id(),
+  partyId: text("party_id").notNull().references(() => parties.id),
+  status: cartStatus("status").default("OPEN").notNull(),
+  submittedAt: ts("submitted_at"),
+  createdAt: createdAt(), updatedAt: updatedAt(),
+});
+
+export const cartItems = pgTable("cart_items", {
+  id: id(),
+  cartId: text("cart_id").notNull().references(() => carts.id),
+  vesselId: text("vessel_id").notNull().references(() => vessels.id),
+  typeCode: text("type_code").notNull().references(() => operationTypes.code),
+  fromFacilityId: text("from_facility_id").references(() => facilities.id),
+  toFacilityId: text("to_facility_id").references(() => facilities.id),
+  plannedStart: ts("planned_start").notNull(),
+  declaration: jsonb("declaration").notNull(),
+  billingPartyId: text("billing_party_id").references(() => parties.id),
+  estimate: jsonb("estimate"),
+  operationId: text("operation_id").references(() => operations.id),
+  createdAt: createdAt(),
+});
 
 // ───────────── AÇIK KONULAR ─────────────
 export const openIssues = pgTable("open_issues", {

@@ -1,9 +1,11 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 
 export const metadata = { title: "Personel" };
 
 export default async function Personnel() {
+  await requireInternalPage();
   const rows = await db.select().from(s.personnel).orderBy(asc(s.personnel.title));
   return (
     <>

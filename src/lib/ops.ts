@@ -65,10 +65,15 @@ export async function ruleStatusMap() {
   return Object.fromEntries(rows.map((r) => [r.code, r.status]));
 }
 
-export async function computeOperation(o: LoadedOperation): Promise<{ results: CalcResult[]; error?: string }> {
+/**
+ * mode = "actual": gerçekleşen olaylardan; mode = "estimate": teklif/taahhüt için standart varsayım
+ * (saatlik hizmette 1 saat, tamamlandı, bekleme yok) — gerçekleşen süre teklif belgesini değiştirmez.
+ */
+export async function computeOperation(o: LoadedOperation, mode: "actual" | "estimate" = "actual"): Promise<{ results: CalcResult[]; error?: string }> {
   const tariffs = await loadTariffs();
   const statuses = await ruleStatusMap();
-  const serviceDate = (o.events.find((e) => ["PILOT_BOARDED", "TUG_ALONGSIDE", "MOORING_START"].includes(e.type))?.occurredAt ?? o.op.plannedStart ?? new Date()).toISOString();
+  const firstStart = o.events.find((e) => ["PILOT_BOARDED", "TUG_ALONGSIDE", "MOORING_START"].includes(e.type))?.occurredAt;
+  const serviceDate = ((mode === "estimate" ? o.op.plannedStart : firstStart ?? o.op.plannedStart) ?? new Date()).toISOString();
   let version: TariffVersionInput;
   try { version = selectTariffVersion(tariffs, serviceDate); } catch (e) { return { results: [], error: (e as Error).message }; }
   const conds: string[] = [];
@@ -76,7 +81,9 @@ export async function computeOperation(o: LoadedOperation): Promise<{ results: C
   if (o.portCall.repairPurpose && ["OP-005", "OP-006"].includes(o.op.typeCode)) conds.push("REPAIR_YARD");
   if (o.portCall.dgClass) conds.push("DANGEROUS_CARGO");
   const evs = o.events.map((e) => ({ ...e, occurredAt: e.occurredAt.toISOString() }));
-  const gt = verifiedGt(o);
+  // tahmin modunda saha doğrulaması yoksa müşteri beyanı kullanılır (tahmini ve bağlayıcı değil); gerçekleşen hesapta yalnız doğrulanmış GT
+  const declaredGt = (o.requests.find((r) => r.layer === "CUSTOMER_DECLARED")?.payload as { gt?: number } | undefined)?.gt;
+  const gt = verifiedGt(o) ?? (mode === "estimate" && typeof declaredGt === "number" ? declaredGt : null);
   const results: CalcResult[] = [];
   for (const line of o.lines) {
     if (!["PILOTAGE", "TOWAGE", "MOORING", "UNMOORING"].includes(line.kind)) continue;
@@ -89,9 +96,9 @@ export async function computeOperation(o: LoadedOperation): Promise<{ results: C
     const waiting = actualDuration(evs, line.kind as ServiceKindT).pauseMinutes;
     const input: CalcInput = {
       operationRef: o.op.ref, serviceKind: line.kind as CalcInput["serviceKind"], serviceDate, gt,
-      measuredMinutes: measured, allocatedUnits: line.allocatedUnits ?? 1, requestedUnits: line.billableUnits ?? 1,
+      measuredMinutes: mode === "estimate" ? 60 : measured, allocatedUnits: line.allocatedUnits ?? 1, requestedUnits: line.billableUnits ?? 1,
       extraUnitsWrittenRequest: !!line.masterWrittenRequestDocId, conditionCodes: conds,
-      completion: completionOf(o.op.opStatus, line.cancelReason), waitingMinutes: waiting,
+      completion: mode === "estimate" ? "COMPLETED" : completionOf(o.op.opStatus, line.cancelReason), waitingMinutes: mode === "estimate" ? 0 : waiting,
     };
     results.push(calculate(input, version, statuses));
   }

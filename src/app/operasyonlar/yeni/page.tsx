@@ -1,3 +1,4 @@
+import { requireInternalPage } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 import { NewOperationForm } from "./form";
@@ -5,6 +6,7 @@ import { NewOperationForm } from "./form";
 export const metadata = { title: "Yeni talep" };
 
 export default async function NewOperation() {
+  await requireInternalPage();
   const [vessels, types, facilities, parties] = await Promise.all([
     db.select().from(s.vessels).orderBy(asc(s.vessels.name)),
     db.select().from(s.operationTypes).orderBy(asc(s.operationTypes.code)),

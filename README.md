@@ -28,6 +28,20 @@ npm run dev                     # http://localhost:3000
 | Sunucu tarafı yetki/geçiş denetimi, denetim kaydı, çift tıklamaya karşı idempotens | ✓ |
 | Gerçek kimlik doğrulama + MFA | Geliştirme rol seçici var; canlı öncesi eklenecek |
 
+## Faz 2 durumu
+| Teslimat | Durum |
+|---|---|
+| Müşteri portalı (`/portal`): gemi → tesis → zaman → beyan → tahmini bedelli paket kartları (kapsam, kapsam dışı, gerekli belgeler, eksik bilgi) | ✓ |
+| Sepet: rezervasyon değil; kalem bazında fatura muhatabı; tekrar gönderimde çoğaltma yok; sonuç ekranında talep numaraları | ✓ |
+| Kayıt düzeyi erişim: dış kullanıcı yalnız taraf olduğu işleri görür (liste, detay, PDF indirme 404) | ✓ |
+| Beyan etki analizi: değişen alan → etkilenen fiyat/belge/onay; kritik değişiklikte muhatap onayı otomatik düşer | ✓ |
+| PDF belgeler (talepname, beyan formu, taahhütname, iş emri, bill, iş bitim raporu, hesap dökümü) — aynı operasyon verisinden, `TIP_GEMI_YYYYMMDD_OP000123_V01.pdf`, SHA-256, içerik özeti; içerik değişmedikçe yeni sürüm açılmaz | ✓ |
+| Onay belge sürümüne bağlı; talepname/taahhütname yeni sürüme geçerse onay yenilenir | ✓ |
+| İmza düzeyleri: çizilmiş imza, hesap onayı, ıslak imzalı nüsha yükleme (içerik imzası kontrollü); nitelikli e-imza entegrasyonu ayrı | ✓ / entegrasyon bekliyor |
+| Nesne depolama adaptörü (yerel → S3), üzerine yazma yasak | ✓ |
+
+Testler: `npm test` → 41 birim testi. Uçtan uca tarayıcı senaryoları sepet, belge, onay, yeniden onay, ıslak imza ve başka müşteri erişimini doğrular.
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

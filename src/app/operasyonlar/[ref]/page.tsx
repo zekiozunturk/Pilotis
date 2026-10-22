@@ -10,6 +10,12 @@ import { fmtDT, fmtTime, fmtMin, fmtNum, fmtMoney } from "@/lib/format";
 import { CalcCard } from "@/components/CalcCard";
 import { FieldActions } from "./field";
 import { VerifyForm, BillingPartyForm, BillingDecisionForm, SaveCalcForm } from "./forms";
+import { DocumentsPanel, type DocRow } from "./docs";
+import { DOC_TYPES } from "@/lib/docs/builders";
+import { currentScope } from "@/lib/session";
+import { canSeeOperation } from "@/lib/scope";
+import { declarationImpact, type Declaration } from "@/lib/declaration";
+import { desc, eq, inArray } from "drizzle-orm";
 
 export async function generateMetadata({ params }: { params: Promise<{ ref: string }> }) {
   return { title: (await params).ref };
@@ -21,6 +27,17 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
   const { ref } = await params;
   const o = await loadOperation(ref);
   if (!o) notFound();
+  const scope = await currentScope();
+  // Başka müşterinin kaydı: varlığı dahi açığa çıkarılmaz
+  if (!canSeeOperation(scope, { ...o.op, agentPartyId: o.portCall.agentPartyId })) notFound();
+  const internal = !scope.external;
+  const docRows = await db.select().from(s.documentVersions).where(eq(s.documentVersions.operationId, o.op.id)).orderBy(desc(s.documentVersions.createdAt));
+  const approvals = docRows.length ? await db.select().from(s.documentApprovals).where(inArray(s.documentApprovals.documentVersionId, docRows.map((d) => d.id))) : [];
+  const docs: DocRow[] = docRows.map((d) => ({ id: d.id, docType: d.docType, version: d.version, fileName: d.fileName, sha256: d.sha256, origin: d.origin, signature: d.signature, signedBy: d.signedBy, createdAt: d.createdAt.toISOString(), sizeBytes: d.sizeBytes,
+    approvals: approvals.filter((a) => a.documentVersionId === d.id).map((a) => ({ name: a.approverName, level: a.level, decision: a.decision, at: a.decidedAt.toISOString() })), isApprovedBase: o.billing?.approvedDocVersionId === d.id && o.billing?.decision === "APPROVED" }));
+  const customerDecl = o.requests.find((r) => r.layer === "CUSTOMER_DECLARED")?.payload as Declaration | undefined;
+  const lastDecl = o.requests.at(-1)?.payload as Declaration | undefined;
+  const mismatch = o.requests.length > 1 ? declarationImpact(customerDecl, lastDecl ?? {}) : null;
   const { results, error } = await computeOperation(o);
   const parties = await db.select().from(s.parties).orderBy(asc(s.parties.legalName));
   const companies = parties.filter((p) => p.kind !== "AUTHORITY").map((p) => ({ id: p.id, label: p.legalName }));
@@ -63,12 +80,13 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
                 <span className={`badge ${o.billing.decision === "APPROVED" ? "ok" : o.billing.decision === "REJECTED" ? "bad" : "warn"}`}>
                   {o.billing.decision === "APPROVED" ? `Onaylandı · ${o.billing.authorizedPerson} · ${fmtDT(o.billing.decidedAt)}` : o.billing.decision === "REJECTED" ? "Reddedildi" : "Onay bekliyor"}
                 </span>) : "—"}
-                {o.billing?.approvedDocVersionId && <div className="mono muted">Sabitlenen içerik: {o.billing.approvedDocVersionId}</div>}
+                {o.billing?.approvedDocVersionId && <div className="muted" style={{ fontSize: 11.5 }}>Onaylanan içerik: <span className="mono">{docRows.find((d) => d.id === o.billing!.approvedDocVersionId)?.fileName ?? "—"}</span></div>}
               </td></tr>
             </tbody></table>
             <div className="sep" />
-            {!o.op.billingPartyId && <BillingPartyForm opRef={o.op.ref} parties={companies} />}
-            {o.billing && o.billing.decision !== "APPROVED" && <BillingDecisionForm opRef={o.op.ref} />}
+            {o.billing?.note && <div className="alert warn" style={{ marginBottom: 8 }}><span>↻</span><div><b>Yeniden onay gerekiyor</b>{o.billing.note}</div></div>}
+            {internal && !o.op.billingPartyId && <BillingPartyForm opRef={o.op.ref} parties={companies} />}
+            {o.billing && o.billing.decision !== "APPROVED" && (internal || scope.partyId === o.billing.billingPartyId) && <BillingDecisionForm opRef={o.op.ref} />}
             {o.op.billingPartyId && o.op.billingPartyId === o.op.requesterPartyId && <div className="muted" style={{ fontSize: 12 }}>Talep eden ile muhatap aynı — yine de ayrı onay kaydı tutulur.</div>}
           </div>
 
@@ -85,10 +103,16 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
             <div className="sep" />
             <h3>Beyan sürümleri (silinmez)</h3>
             <table><thead><tr><th>V</th><th>Katman</th><th>İçerik</th><th>Zaman</th></tr></thead><tbody>
-              {o.requests.map((r) => <tr key={r.id}><td className="mono">v{r.version}</td><td>{LAYER[r.layer]}</td><td className="mono" style={{ fontSize: 11.5 }}>{JSON.stringify(r.payload)}</td><td>{fmtDT(r.createdAt)}</td></tr>)}
+              {o.requests.map((r) => <tr key={r.id}><td className="mono">v{r.version}</td><td>{LAYER[r.layer]}</td><td style={{ fontSize: 12 }}>{Object.entries(r.payload as Record<string, unknown>).filter(([, v]) => v !== null && v !== "").map(([k, v]) => <span key={k} style={{ marginRight: 8, whiteSpace: "nowrap" }}><span className="muted">{k}</span> <b>{String(v)}</b></span>)}</td><td>{fmtDT(r.createdAt)}</td></tr>)}
             </tbody></table>
-            <div className="sep" />
-            <VerifyForm opRef={o.op.ref} gt={String(vGt ?? declared?.gt ?? "")} />
+            {mismatch && mismatch.changes.length > 0 && <>
+              <div className="sep" />
+              <div className="alert warn"><span>⚠</span><div><b>Beyan ile son durum farklı</b>
+                {mismatch.changes.map((c) => <div key={c.key} style={{ display: "block" }}>{c.label}: {String(c.from ?? "—")} → <b>{String(c.to)}</b>{c.critical ? " (kritik)" : ""}</div>)}
+                <div style={{ marginTop: 4 }}>Etkilenen: {mismatch.affected.join(", ")}</div></div></div>
+            </>}
+            {internal && <><div className="sep" />
+            <VerifyForm opRef={o.op.ref} gt={String(vGt ?? declared?.gt ?? "")} engine={String(lastDecl?.engine ?? "")} cargo={String(lastDecl?.cargoCondition ?? o.portCall.cargoCondition ?? "")} /></>}
           </div>
 
           <div className="card">
@@ -113,10 +137,15 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
         {/* Sağ sütun */}
         <div className="grid" style={{ alignContent: "start" }}>
           <div className="card">
+            <h2>Belgeler</h2>
+            <DocumentsPanel opRef={o.op.ref} types={Object.entries(DOC_TYPES)} docs={docs} canGenerate={internal} />
+          </div>
+
+          {internal && <div className="card">
             <h2>Saha işlemleri</h2>
             {!declarationChecked && o.op.opStatus !== "COMPLETED" && <div className="alert warn" style={{ marginBottom: 10 }}><span>⚠</span><div>Hizmet başlatılmadan önce beyan sahada kontrol edilmeli (soldaki "Beyanı kontrol et").</div></div>}
             <FieldActions opRef={o.op.ref} opStatus={o.op.opStatus} tugs={tugs} declarationChecked={declarationChecked} />
-          </div>
+          </div>}
 
           <div className="card">
             <h2>Olay zaman çizelgesi</h2>
@@ -139,10 +168,10 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
             </div>
             {error && <div className="alert bad"><span>⚠</span><div>{error}</div></div>}
             <div className="grid" style={{ gap: 10 }}>{results.map((r) => <CalcCard key={r.serviceKind} r={r} />)}</div>
-            <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
+            {internal && <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
               <SaveCalcForm opRef={o.op.ref} />
               <span className="muted" style={{ fontSize: 12 }}>Kayıt, girdi hash'i ve tarife sürümüyle sabitlenir.</span>
-            </div>
+            </div>}
             {o.calcs.length > 0 && <>
               <div className="sep" />
               <h3>Kayıtlı hesaplar</h3>
