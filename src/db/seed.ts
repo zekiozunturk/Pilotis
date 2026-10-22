@@ -3,10 +3,11 @@ import { db, schema as s } from "./index";
 import { FLEET_SEED, OPERATION_TYPES, RULES, OPEN_ISSUES, OPERATOR, DEMO_TARIFF } from "../data/catalog";
 import { KRP_PETKIM_REV4 } from "../data/tariffs/krp-petkim-rev4";
 import { REFERENCE_CASES } from "../data/reference-cases";
+import { TERMS } from "../data/terms";
 import { sql } from "drizzle-orm";
 
 async function main() {
-  await db.execute(sql`TRUNCATE exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -134,9 +135,59 @@ async function main() {
     requestStatus: "SUBMITTED", approvalStatus: "AWAITING_BILLING_PARTY", isDemo: true,
   });
 
-  // Örnek personel (AK-09 gelene kadar)
-  const crew = [["ÖRNEK Kaptan 1", "Römorkör Kaptanı"], ["ÖRNEK Başçarkçı 1", "Başçarkçı"], ["ÖRNEK Yağcı 1", "Yağcı"], ["ÖRNEK Pimci 1", "Pimci"], ["ÖRNEK Kılavuz Kaptan 1", "Kılavuz Kaptan"], ["ÖRNEK Kıyı Operasyon 1", "Kıyı Operasyon Sorumlusu"]];
-  await db.insert(s.personnel).values(crew.map(([fullName, title]) => ({ fullName, title, unit: "Operasyon", isDemo: true })));
+  // ───── Örnek personel ve vardiyalar (AK-09 gelene kadar; isDemo) ─────
+  const tugsAll = (await db.select().from(s.fleetAssets)).filter((a) => a.type === "TUG").sort((a, b) => a.name.localeCompare(b.name));
+  const ROLES: [string, string][] = [["KAPTAN", "Römorkör Kaptanı"], ["BASCARKCI", "Başçarkçı"], ["YAGCI", "Yağcı"], ["PIMCI", "Pimci"]];
+  const people: { id: string; crewRole: string; tug?: string; name: string }[] = [];
+  for (const t of tugsAll) for (const [cr, title] of ROLES) {
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${title} · ${t.name}`, title, unit: `${t.name} ekibi`, crewRole: cr, homeAssetId: t.id, workProfile: "STCW_MLC", isDemo: true }).returning();
+    people.push({ id: p.id, crewRole: cr, tug: t.name, name: p.fullName });
+  }
+  for (let i = 1; i <= 3; i++) {
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK Kılavuz Kaptan ${i}`, title: "Kılavuz Kaptan", unit: "Kılavuzluk", crewRole: "KILAVUZ", workProfile: "STCW_MLC", isDemo: true }).returning();
+    people.push({ id: p.id, crewRole: "KILAVUZ", name: p.fullName });
+  }
+  for (let i = 1; i <= 2; i++) {
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK Kıyı Operasyon ${i}`, title: "Kıyı Operasyon Sorumlusu", unit: "Operasyon", crewRole: "KIYI_OPS", workProfile: "IS_KANUNU", isDemo: true }).returning();
+    people.push({ id: p.id, crewRole: "KIYI_OPS", name: p.fullName });
+  }
+  // Yeterlik belgeleri — biri süresi dolmuş, biri yakında dolacak (planlama kontrolü örneği)
+  for (const [i, p] of people.entries()) {
+    const exp = i === 5 ? "2026-10-15" : i === 9 ? "2026-11-03" : "2027-08-31";
+    await db.insert(s.certificates).values({ personnelId: p.id, name: p.crewRole === "KILAVUZ" ? "Kılavuz kaptan yetki belgesi" : p.crewRole === "KIYI_OPS" ? "İSG eğitimi" : "Gemiadamı yeterlik belgesi", number: `ÖRNEK-${1000 + i}`, issuedAt: new Date("2022-01-01"), expiresAt: new Date(`${exp}T23:59:59+03:00`) });
+  }
+  const tr = (d: string, h: string) => new Date(`${d}T${h}:00+03:00`);
+  const days = ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"];
+  const next = (d: string) => days[days.indexOf(d) + 1] ?? "2026-10-26";
+  const rows: (typeof s.shifts.$inferInsert)[] = [];
+  const add = (pid: string, cat: "WORK" | "STANDBY" | "TRAINING" | "LEAVE", a: Date, b: Date, note?: string) => rows.push({ personnelId: pid, category: cat, status: a < new Date("2026-10-22T12:00:00+03:00") ? "CONFIRMED" : "PLANNED", startAt: a, endAt: b, note, createdBy: "seed", isDemo: true });
+  people.forEach((p, i) => {
+    days.forEach((d, di) => {
+      const dow = di % 7; // 0 = pazartesi
+      if (p.crewRole === "KIYI_OPS") { if (dow < 5 || (i % 2 === 0 && dow === 5)) add(p.id, "WORK", tr(d, "08:00"), tr(d, "17:00")); return; }
+      if (p.crewRole === "KILAVUZ") { if ((di + i) % 2 === 0) add(p.id, "WORK", tr(d, "07:00"), tr(d, "19:00")); else if ((di + i) % 4 === 1) add(p.id, "STANDBY", tr(d, "19:00"), tr(next(d), "07:00"), "Gece hazır bulunma"); return; }
+      const tugIdx = tugsAll.findIndex((t) => t.name === p.tug);
+      if (tugIdx < 2) { if (dow < 6) add(p.id, "WORK", tr(d, "08:00"), tr(d, "18:00")); }              // Yalova 2-3: gündüz ekibi
+      else if ((di + tugIdx) % 2 === 0) add(p.id, "WORK", tr(d, "20:00"), tr(next(d), "06:00"));        // Yalova 4-5: gece ekibi, gün aşırı
+    });
+  });
+  // Bilinçli ihlal örneği: Yalova 5 kaptanı gece görevinden çıkıp aynı sabah gündüz vardiyasına yazılmış
+  const y5k = people.find((p) => p.tug === "Yalova 5" && p.crewRole === "KAPTAN")!;
+  add(y5k.id, "WORK", tr("2026-10-23", "08:00"), tr("2026-10-23", "16:00"), "Ek görev (örnek ihlal)");
+  // Eğitim ve izin örnekleri
+  const y2y = people.find((p) => p.tug === "Yalova 2" && p.crewRole === "YAGCI")!;
+  add(y2y.id, "TRAINING", tr("2026-10-24", "09:00"), tr("2026-10-24", "13:00"), "Yangın tatbikatı");
+  const y3p = people.find((p) => p.tug === "Yalova 3" && p.crewRole === "PIMCI")!;
+  const leaveRows = rows.filter((r) => r.personnelId === y3p.id && r.startAt >= tr("2026-10-22", "00:00") && r.startAt < tr("2026-10-24", "00:00"));
+  for (const r of leaveRows) rows.splice(rows.indexOf(r), 1);
+  add(y3p.id, "LEAVE", tr("2026-10-22", "00:00"), tr("2026-10-24", "00:00"), "Yıllık izin");
+  await db.insert(s.shifts).values(rows);
+
+  // Terminoloji
+  await db.insert(s.terms).values(TERMS.map((t) => ({
+    number: t.n, slug: t.slug, tr: t.tr, aliases: t.aliases, definition: t.def, source: t.source ?? null, confusedWith: t.confused ?? null,
+    translations: Object.fromEntries(Object.entries(t.t).map(([k, v]) => [k, { text: v, reviewed: false }])), status: "TASLAK",
+  })));
 
   console.log("Tohumlama tamam.");
   process.exit(0);

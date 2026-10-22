@@ -273,6 +273,9 @@ export const personnel = pgTable("personnel", {
   photoUrl: text("photo_url"),
   active: boolean("active").default(true).notNull(),
   isDemo: boolean("is_demo").default(false).notNull(),
+  workProfile: text("work_profile").default("STCW_MLC").notNull(), // çalışma/dinlenme kural profili
+  crewRole: text("crew_role"), // KAPTAN, BASCARKCI, YAGCI, PIMCI, KILAVUZ, KIYI_OPS
+  homeAssetId: text("home_asset_id"),
   createdAt: createdAt(), updatedAt: updatedAt(),
 });
 
@@ -505,5 +508,43 @@ export const appSettings = pgTable("app_settings", {
   key: text("key").primaryKey(),
   value: jsonb("value").notNull(),
   updatedBy: text("updated_by"),
+  updatedAt: updatedAt(),
+});
+
+// ───────────── PLANLAMA ─────────────
+export const shiftCategory = pgEnum("shift_category", ["WORK", "STANDBY", "TRAINING", "LEAVE"]);
+export const shiftStatus = pgEnum("shift_status", ["PLANNED", "CONFIRMED", "CANCELLED"]);
+
+/** Vardiya / görev / izin kayıtları. Plan ve gerçekleşen ayrı statülerle; iptal edilen silinmez. */
+export const shifts = pgTable("shifts", {
+  id: id(),
+  personnelId: text("personnel_id").notNull().references(() => personnel.id),
+  category: shiftCategory("category").notNull(),
+  status: shiftStatus("status").default("PLANNED").notNull(),
+  startAt: ts("start_at").notNull(),
+  endAt: ts("end_at").notNull(),
+  assetId: text("asset_id").references(() => fleetAssets.id),
+  operationId: text("operation_id").references(() => operations.id),
+  note: text("note"),
+  /** Kural ihlaline rağmen kaydedildiyse: yetkili, dayanak, gerekçe, etkilenen ihlaller, telafi planı */
+  exception: jsonb("exception"),
+  createdBy: text("created_by"),
+  isDemo: boolean("is_demo").default(false).notNull(),
+  createdAt: createdAt(),
+}, (t) => [index("shift_person_time_idx").on(t.personnelId, t.startAt)]);
+
+// ───────────── TERMİNOLOJİ ─────────────
+/** Merkezî terim sözlüğü — numara değişmez; çeviriler insan onayı olmadan bağlayıcı değildir. */
+export const terms = pgTable("terms", {
+  number: integer("number").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  tr: text("tr").notNull(),
+  aliases: text("aliases").array().notNull().default([]),
+  definition: text("definition").notNull(),
+  source: text("source"),
+  confusedWith: text("confused_with"),
+  translations: jsonb("translations").notNull(), // { en: {text, reviewed}, de, it, nb, ar }
+  status: text("status").default("TASLAK").notNull(),
+  version: integer("version").default(1).notNull(),
   updatedAt: updatedAt(),
 });

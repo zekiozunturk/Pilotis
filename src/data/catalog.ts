@@ -93,6 +93,9 @@ export const RULES: { code: string; title: string; label: "REGULATION" | "CONTRA
   { code: "R-026", title: "Kılavuz/römorkör alma zorunluluğuna uyulmaması %100 artırım", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4", modules: ["Hesap"] },
   { code: "R-027", title: "Türk bayraklı gemiye %20 indirim (kabotaj sütunu hariç)", label: "REGULATION", status: "SOURCE_FOUND", basis: "Petkim ABU-TRO-LST-0141 Rev.4", modules: ["Hesap"] },
   { code: "R-028", title: "Ücretler USD; her yıl 1 Şubat'tan itibaren ABD TÜFE oranında güncellenir; negatifse önceki ücret", label: "REGULATION", status: "SOURCE_FOUND", basis: "KRP Yönergesi md. 5(1)(b)", modules: ["Tarife"] },
+  { code: "R-029", title: "Hazır bulunma (nöbet) dinlenme hesabında çalışma sayılır", label: "OPERATING_PRACTICE", status: "DRAFT", basis: "İşletme kararı bekleniyor; STCW/MLC ve İş Kanunu yorumu", modules: ["Planlama"] },
+  { code: "R-030", title: "Römorkör/kılavuz personeline STCW/MLC, kara personeline İş Kanunu profili uygulanır", label: "OPERATING_PRACTICE", status: "DRAFT", basis: "Uygulanabilirlik hukuk/İSG görüşüyle doğrulanacak", modules: ["Planlama", "Personel"] },
+  { code: "R-031", title: "Kural ihlaliyle plan yalnız yetkili acil durum istisnasıyla kaydedilir; telafi planı zorunlu", label: "OPERATING_PRACTICE", status: "APPROVED", basis: "PILOTIS şartnamesi §13–14", modules: ["Planlama"] },
   { code: "R-020", title: "Dinlenme kontrolü kayan zaman penceresiyle", label: "INTL_GOOD_PRACTICE", status: "EXPERT_REVIEW", basis: "STCW A-VIII/1 (uygulanabilirlik doğrulanacak)", modules: ["Personel", "Planlama"] },
 ];
 

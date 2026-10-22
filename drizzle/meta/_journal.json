@@ -29,6 +29,13 @@
       "when": 1792657408947,
       "tag": "0003_fx_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792659397457,
+      "tag": "0004_planlama_terminoloji",
+      "breakpoints": true
     }
   ]
 }

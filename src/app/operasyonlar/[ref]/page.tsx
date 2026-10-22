@@ -8,6 +8,7 @@ import { STATUS_SETS, EVENT_LABELS } from "@/lib/labels";
 import { SERVICE_LABELS } from "@/data/catalog";
 import { fmtDT, fmtTime, fmtMin, fmtNum, fmtMoney } from "@/lib/format";
 import { CalcCard } from "@/components/CalcCard";
+import { Term } from "@/components/Term";
 import { getDisplay } from "@/lib/display";
 import { displayAlt, fmtCcy } from "@/lib/money";
 import { INVOICE_NOTE } from "@/data/catalog";
@@ -76,7 +77,7 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
         {/* Sol sütun */}
         <div className="grid" style={{ alignContent: "start" }}>
           <div className="card">
-            <h2>Taraflar ve fatura muhatabı</h2>
+            <h2>Taraflar ve <Term n={25}>fatura muhatabı</Term></h2>
             <table><tbody>
               <tr><td className="muted">Talep eden</td><td>{o.requester?.legalName ?? "—"}</td></tr>
               <tr><td className="muted">Acente</td><td>{o.agent?.legalName ?? "—"}</td></tr>
@@ -101,7 +102,7 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
               <tr><td className="muted">IMO / bayrak / tip</td><td>{o.vessel.imo ?? o.vessel.altOfficialId ?? "—"} · {o.vessel.flag ?? "—"} · {o.vessel.vesselType ?? "—"}</td></tr>
               <tr><td className="muted">Kayıtlı GT / NT / DWT</td><td>{fmtNum(o.vessel.gt)} / {fmtNum(o.vessel.nt)} / {fmtNum(o.vessel.dwt)}</td></tr>
               <tr><td className="muted">Beyan edilen GT</td><td>{fmtNum(declared?.gt ?? null)}</td></tr>
-              <tr><td className="muted">Hesaba giren GT</td><td>{vGt !== null ? <b>{fmtNum(vGt)}</b> : <span className="badge warn">Saha doğrulaması yok</span>}
+              <tr><td className="muted">Hesaba giren <Term n={13}>GT</Term></td><td>{vGt !== null ? <b>{fmtNum(vGt)}</b> : <span className="badge warn">Saha doğrulaması yok</span>}
                 {vGt !== null && declared?.gt != null && vGt !== declared.gt && <span className="badge bad" style={{ marginLeft: 6 }}>Beyan uyuşmazlığı</span>}</td></tr>
               <tr><td className="muted">Yük durumu</td><td>{o.portCall.cargoCondition}{o.portCall.isCabotage ? " · kabotaj" : ""}{o.portCall.repairPurpose ? ` · onarım: ${o.portCall.repairPurpose}` : ""}</td></tr>
             </tbody></table>
@@ -121,7 +122,7 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
           </div>
 
           <div className="card">
-            <h2>Hizmet satırları ve gerçek süreler</h2>
+            <h2>Hizmet satırları ve gerçek süreler (<Term n={1}>kılavuzluk</Term>, <Term n={3}>römorkörcülük</Term>, <Term n={5}>palamar</Term>)</h2>
             <table><thead><tr><th>Hizmet</th><th>Tahsis</th><th>Ücretlenebilir</th><th>Başlangıç</th><th>Bitiş</th><th>Gerçek süre</th><th>Bekleme</th></tr></thead><tbody>
               {o.lines.map((l) => {
                 const k = l.kind as ServiceKindT;
