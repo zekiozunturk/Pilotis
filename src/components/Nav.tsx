@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 const GROUPS: { title: string; items: [string, string, string][] }[] = [
   { title: "Operasyon", items: [["/", "◎", "Kokpit"], ["/operasyonlar", "⚓", "Operasyonlar"], ["/operasyonlar/yeni", "+", "Yeni talep (masa)"], ["/portal", "▣", "Müşteri portalı"]] },
   { title: "Kayıtlar", items: [["/gemiler", "▲", "Gemiler"], ["/taraflar", "◇", "Taraflar & tesisler"], ["/filo", "⛴", "Filo"], ["/personel", "●", "Personel"]] },
-  { title: "Kural & Tarife", items: [["/katalog", "≡", "Hizmet kataloğu"], ["/tarife", "∑", "Tarife & hesap"], ["/kurallar", "§", "Mevzuat / kurallar"], ["/acik-konular", "!", "Açık konular"]] },
+  { title: "Kural & Tarife", items: [["/katalog", "≡", "Hizmet kataloğu"], ["/tarife", "∑", "Tarife & fiyat listesi"], ["/kurlar", "₺", "Döviz kurları"], ["/kurallar", "§", "Mevzuat / kurallar"], ["/acik-konular", "!", "Açık konular"]] },
 ];
 
 const EXTERNAL: string[] = ["/portal", "/operasyonlar", "/gemiler"];

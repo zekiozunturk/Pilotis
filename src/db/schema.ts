@@ -484,3 +484,26 @@ export const openIssues = pgTable("open_issues", {
   closed: boolean("closed").default(false).notNull(),
 });
 
+
+// ───────────── KUR & AYARLAR ─────────────
+export const fxSource = pgEnum("fx_source", ["TCMB", "MANUAL"]);
+
+/** Döviz kurları — 1 birim döviz kaç TL. Kaynak bülteni ile saklanır, üzerine yazılmaz. */
+export const exchangeRates = pgTable("exchange_rates", {
+  id: id(),
+  currency: text("currency").notNull(),        // USD, EUR
+  bulletinDate: text("bulletin_date").notNull(), // YYYY-MM-DD (TCMB bülten tarihi)
+  bulletinNo: text("bulletin_no"),
+  forexBuying: numeric("forex_buying", { precision: 14, scale: 6 }),
+  forexSelling: numeric("forex_selling", { precision: 14, scale: 6 }),
+  source: fxSource("source").notNull(),
+  enteredBy: text("entered_by"),
+  fetchedAt: ts("fetched_at").defaultNow().notNull(),
+}, (t) => [uniqueIndex("fx_cur_date_src_uq").on(t.currency, t.bulletinDate, t.source)]);
+
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: updatedAt(),
+});

@@ -5,7 +5,8 @@ import { BRAND, OPERATOR } from "@/data/catalog";
 import { currentScope, ROLE_LABELS } from "@/lib/session";
 import { db, schema as s } from "@/db";
 import { asc, eq } from "drizzle-orm";
-import { setRole } from "./actions";
+import { setRole, setDisplayCurrency } from "./actions";
+import { getDisplay } from "@/lib/display";
 
 export const metadata: Metadata = {
   title: { default: "PILOTIS — Yalova Pilotaj", template: "%s · PILOTIS" },
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { role, external, partyId } = await currentScope();
+  const display = await getDisplay();
   const companies = await db.select({ id: s.parties.id, name: s.parties.legalName }).from(s.parties).where(eq(s.parties.kind, "COMPANY")).orderBy(asc(s.parties.legalName));
   return (
     <html lang="tr">
@@ -38,6 +40,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div>
             <header className="topbar">
               <div className="slogan">{BRAND.slogan}</div>
+              <form action={setDisplayCurrency} style={{ marginLeft: "auto" }}>
+                <span title="Hesap ve faturalar TL'dir; döviz gösterimi güncel TCMB kuruyla bilgi amaçlıdır">Gösterim:</span>
+                {(["TRY", "USD", "EUR"] as const).map((c) => <button key={c} name="ccy" value={c} className={`btn ${display.ccy === c ? "" : "secondary"}`} style={{ minHeight: 30, padding: "4px 10px" }}>{c === "TRY" ? "₺ TL" : c === "USD" ? "$ USD" : "€ EUR"}</button>)}
+              </form>
               <form action={setRole}>
                 <span title="Geliştirme oturumu: gerçek kimlik doğrulama ve MFA canlıya geçişten önce eklenecek">Rol (geliştirme):</span>
                 <select name="role" defaultValue={role} style={{ width: 220 }}>
@@ -53,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <main className="main">
               {children}
               <div className="footer">
-                <span><b>PILOTIS</b> v0.3 · Faz 3 · {BRAND.slogan}</span>
+                <span><b>PILOTIS</b> v0.4 · Faz 3 + TL/fiyat listesi · {BRAND.slogan}</span>
                 <span>Zamanlar Europe/Istanbul gösterilir, UTC saklanır.</span>
               </div>
             </main>

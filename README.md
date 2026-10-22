@@ -59,6 +59,19 @@ Testler: `npm test` → 85 birim/referans testi.
 
 **2026–2027 tarifesi için gereken tek veri:** Bakanlık ücret eki ya da DGM'nin duyurduğu ABD TÜFE oranı (AK-15). Oran girilince sistem 2026–2027 taslağını türetir; vakalar eklenir, notlar çözülür, onaylanıp yürürlüğe alınır.
 
+## Para birimi ve fiyat listesi (v0.4)
+- **Operasyonel para birimi TL.** Döviz (USD/EUR) tarifeli kalemler hizmet anındaki TCMB kuruyla TL'ye çevrilir; kur yoksa TL karşılığı varsayılmaz, hesap üretime geçmez.
+- **Kur politikası** (`/kurlar`): varsayılan TCMB döviz satış, hizmet gününden önceki son bülten — mali müşavir onayına tabi (AK-17). TCMB'den otomatik çekim: `POST /api/kur/guncelle` (`x-cron-secret: $CRON_SECRET`), ulaşılamazsa bülten numarasıyla elle giriş.
+- **Gösterim para birimi** (üst çubuk ₺/$/€): müşteri tutarları USD/EUR görebilir; bilgi amaçlıdır. Her hesap ekranında ve PDF'te: *"Faturalar Türk Lirası (TL) olarak düzenlenir."*
+- **Fiyat listesi**: her kalemin tekil kodu `000.000` (ör. `240.001`), kendi para birimi (TRY/USD/EUR), sabit fiyatı **veya formülü** vardır. Hizmet + kategori atanan kalem motor tarafından ücretlendirilir.
+  - Kodlama: `ABC.xxx` — A hizmet (1 kılavuzluk, 2 römorkör, 3 palamar bağlama, 4 palamar çözme, 5 standby, 9 diğer), B kategori (1 kabotaj, 2 yolcu/Ro-Ro, 3 liner, 4 diğer yük); `.001` taban, `.002` ilave 1000 GT, `.010` hizmet bedeli formülü.
+  - Formül örnekleri: `[200.001] * %30`, `[240.001] + BLOK * [240.002]`, `EGER(GT > 50000; [240.010] * 120%; [240.010])`, `KADEME(CEKI; 16; [500.001]; 30; [500.002])`, `MAX([900.001]; 5000)`.
+  - Değişkenler: GT, GT_TAVAN, BLOK, CEKI, SAAT, ROMORKOR · Fonksiyonlar: MIN, MAX, YUVARLA, YUKARIYUVARLA, ASAGIYUVARLA, MUTLAK, EGER, KADEME.
+  - Farklı para birimindeki kaleme başvuru güncel kurla çevrilir. Döngü, olmayan kalem, sözdizimi hataları kaydı engeller; düzenleyici yazarken doğrular ve örnek değeri TL karşılığıyla gösterir.
+  - Endeksle türetme (ABD TÜFE) yalnız USD sabit fiyatlı kalemlere uygulanır; TL kalemler ve formüller değişmez.
+
+Testler: `npm test` → 106 test.
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

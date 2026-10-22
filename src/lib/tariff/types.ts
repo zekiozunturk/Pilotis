@@ -28,6 +28,7 @@ export interface ServiceTariff {
   bands: GtBand[];
   bollardBands?: BollardBand[];
   gtCap?: number;            // ör. 120.000 GT üstü için 120.000 GT ücreti
+  itemCode?: string;         // fiyat listesi kalemi (200.010) — varsa birim fiyat bu kalemin formülünden
   note?: string;
   rounding?: HourRounding;   // unit=HOUR ise zorunlu
   ruleCodes: string[];
@@ -56,6 +57,8 @@ export interface TariffDefinition {
   /** Çözülmemiş not = sürüm onaylanamaz, hesap üretime geçemez */
   verificationNotes?: VerificationNote[];
   source?: { title: string; docNo?: string; url?: string; publishedAt?: string; note?: string };
+  /** Kodlu fiyat listesi kalemleri (sabit fiyat veya formül, kalem bazında para birimi) */
+  items?: import("../pricing/pricelist").PriceItem[];
   adjustments: Adjustment[];
   moneyScale: number;       // nihai yuvarlama hanesi
 }
@@ -93,6 +96,7 @@ export interface CalcInput {
   categoryReason?: string | null;      // kategori neden seçildi
   categoryAssumed?: boolean;           // varsayıma dayanıyorsa üretime geçmez
   bollardPullT?: number | null;        // standby römorkör için
+  fx?: import("../pricing/pricelist").FxTable; // hizmet anındaki kur (TL karşılığı için)
 }
 
 export interface RuleTrace {
@@ -116,7 +120,11 @@ export interface CalcResult {
   billedUnits: number;
   adjustmentRate: string;
   rules: RuleTrace[];
-  netAmount: string;
+  netAmount: string;            // liste (kalem) para biriminde
+  /** Operasyonel para birimi TL karşılığı; kur yoksa null (asla varsayılmaz) */
+  operational: { amount: string; currency: "TRY"; rate: string; rateDate: string; rateSource: string } | null;
+  itemCode?: string | null;
+  formulaTrace?: string[];
   missing: string[];
   productionEligible: boolean;
   productionBlockers: string[];

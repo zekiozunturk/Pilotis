@@ -5,6 +5,7 @@ import { calculate, selectTariffVersion } from "./tariff/engine";
 import { actualDuration, type ServiceKindT } from "./durations";
 import { categorize, isContainerOrRoro } from "./tariff/category";
 import { holidayAt } from "@/data/holidays";
+import { getFxTable } from "./fx";
 import type { CalcInput, CalcResult, Completion, TariffVersionInput } from "./tariff/types";
 
 export async function nextOperationRef(year = new Date().getUTCFullYear()): Promise<string> {
@@ -89,6 +90,7 @@ export async function computeOperation(o: LoadedOperation, mode: "actual" | "est
   if (dgClass) conds.push("DANGEROUS_CARGO", isContainerOrRoro(o.vessel.vesselType) ? "DANGEROUS_CARGO_CRP" : "DANGEROUS_CARGO_OTHER");
   if (o.vessel.flag?.toUpperCase() === "TR") conds.push("TR_FLAG");
   const holiday = holidayAt(serviceDate);
+  const fx = await getFxTable(serviceDate);
   if (holiday) conds.push("HOLIDAY");
   const evs = o.events.map((e) => ({ ...e, occurredAt: e.occurredAt.toISOString() }));
   // tahmin modunda saha doğrulaması yoksa müşteri beyanı kullanılır (tahmini ve bağlayıcı değil); gerçekleşen hesapta yalnız doğrulanmış GT
@@ -115,7 +117,7 @@ export async function computeOperation(o: LoadedOperation, mode: "actual" | "est
       measuredMinutes: mode === "estimate" ? 60 : measured, allocatedUnits: line.allocatedUnits ?? 1, requestedUnits: line.billableUnits ?? 1,
       extraUnitsWrittenRequest: !!line.masterWrittenRequestDocId, conditionCodes: conds,
       completion: mode === "estimate" ? "COMPLETED" : completionOf(o.op.opStatus, line.cancelReason), waitingMinutes: mode === "estimate" ? 0 : waiting,
-      tariffCategory: category.code, categoryReason: category.reason, categoryAssumed: category.assumed, bollardPullT: bollard,
+      tariffCategory: category.code, categoryReason: category.reason, categoryAssumed: category.assumed, bollardPullT: bollard, fx,
     };
     const r = calculate(input, version, statuses);
     if (holiday) r.rules.unshift({ ruleCode: "R-025", applied: r.rules.some((x) => x.description.startsWith("Ulusal bayram") && x.applied), description: "Tatil tespiti", reason: `${holiday.name}${holiday.verified ? "" : " (tarih Diyanet takviminden doğrulanacak)"}` });

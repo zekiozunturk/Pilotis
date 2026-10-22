@@ -20,3 +20,4 @@ Geliştirme bu konular kapanmadan **örnek verilerle** devam eder; örnek verile
 | AK-14 | Mevcut "Yalova Pilot Portal" (yalovapilot.com) veri devri ve "Manevra Hesaplama" sayfasının hesap mantığı | İşletme | Erişim / dışa aktarım | Faz 2 | Göç, Hesap |
 | AK-15 | KRP 2026–2027 resmî ücret eki veya DGM'nin duyurduğu ABD TÜFE oranı; Petkim Rev.4 aktarımının dönemi ve 7 doğrulama notu | Tarife sorumlusu | Bakanlık KRP ücret eki / DGM duyurusu | Faz 3 kapanışı | Tarife |
 | AK-16 | 2026–2027 dini bayram tarihleri ve arife yarım gününün tarifeye yansıması | Tarife sorumlusu | Diyanet takvimi / Bakanlık görüşü | Faz 3 | Tarife (R-025) |
+| AK-17 | Döviz kalemlerin TL'ye çevriminde kur tipi (döviz satış/alış) ve kur tarihi kuralı (önceki bülten / fatura tarihi) — varsayılan: önceki bülten, döviz satış | Muhasebe / Mali müşavir | Görüş yazısı | Faz 4 | Kur, Tahakkuk |

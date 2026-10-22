@@ -15,7 +15,15 @@ import { computeOperation, loadOperation, nextOperationRef, recordAudit } from "
 import { createHash } from "node:crypto";
 import { calculate as calcEngine, selectTariffVersion as pickVersion } from "@/lib/tariff/engine";
 import { loadTariffs, ruleStatusMap } from "@/lib/ops";
+import { getFxTable } from "@/lib/fx";
 import type { CalcResult, CalcInput } from "@/lib/tariff/types";
+
+export async function setDisplayCurrency(formData: FormData) {
+  const c = String(formData.get("ccy"));
+  if (!["TRY", "USD", "EUR"].includes(c)) return;
+  (await cookies()).set("pilotis_ccy", c, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+}
 
 export async function setRole(formData: FormData) {
   const role = String(formData.get("role"));
@@ -353,6 +361,7 @@ export async function simulateCalc(_: SimState, f: FormData): Promise<SimState> 
     if (!v) return { ok: false, message: "Tarife sürümü bulunamadı" };
     const from = new Date(v.validFrom).getTime(), to = new Date(v.validTo).getTime(), d = new Date(input.serviceDate).getTime();
     if (d < from || d > to) return { ok: false, message: `Hizmet tarihi seçilen sürümün geçerlilik dönemi dışında (${v.validFrom.slice(0, 10)} – ${v.validTo.slice(0, 10)})` };
+    input.fx = await getFxTable(input.serviceDate);
     return { ok: true, result: calcEngine(input, v, await ruleStatusMap()) };
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }

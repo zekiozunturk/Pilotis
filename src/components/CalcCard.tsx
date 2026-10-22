@@ -1,16 +1,21 @@
 import type { CalcResult } from "@/lib/tariff/types";
 import { SERVICE_LABELS } from "@/data/catalog";
 import { fmtMoney } from "@/lib/format";
+import { displayAlt, fmtCcy, type DisplayLike } from "@/lib/money";
 
 /** "Bu bedel neden oluştu?" — hesap dökümü tek kartta. */
-export function CalcCard({ r }: { r: CalcResult }) {
+export function CalcCard({ r, display }: { r: CalcResult; display?: DisplayLike | null }) {
+  const op = r.operational;
+  const alt = op && !r.missing.length ? displayAlt(op.amount, display) : null;
   return (
     <div className="calc">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
           <div className="muted" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>{SERVICE_LABELS[r.serviceKind]}</div>
-          <div className="amount">{r.missing.length ? "—" : fmtMoney(r.netAmount, r.currency)}</div>
-          <div className="muted" style={{ fontSize: 12 }}>{r.tariffLabel}</div>
+          <div className="amount">{r.missing.length ? "—" : op ? fmtCcy(op.amount, "TRY") : <span style={{ color: "var(--warn)", fontSize: 16 }}>TL karşılığı yok (kur)</span>}</div>
+          {!r.missing.length && r.currency !== "TRY" && <div style={{ fontSize: 12 }}>Liste: <b>{fmtMoney(r.netAmount, r.currency)}</b>{op ? ` × ${op.rate} (${op.rateSource}, ${op.rateDate})` : ""}</div>}
+          {alt && <div className="muted" style={{ fontSize: 12 }}>{alt}</div>}
+          <div className="muted" style={{ fontSize: 12 }}>{r.tariffLabel}{r.itemCode ? <> · kalem <span className="mono">[{r.itemCode}]</span></> : null}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           {r.productionEligible ? <span className="badge ok">Üretime uygun</span> : <span className="badge warn">İnceleme kuyruğu</span>}
@@ -25,6 +30,7 @@ export function CalcCard({ r }: { r: CalcResult }) {
           <tr><td className="muted">Ölçülen miktar</td><td>{r.measuredQuantity ? `${r.measuredQuantity} saat` : "Olay başına"}</td></tr>
           <tr><td className="muted">Ücretlendirilen</td><td>{r.billedQuantity} × {r.billedUnits} birim</td></tr>
           <tr><td className="muted">Net oran düzeltmesi</td><td>{(Number(r.adjustmentRate) * 100).toFixed(0)}%</td></tr>
+          {r.formulaTrace && r.formulaTrace.length > 0 && <tr><td className="muted">Formül</td><td className="mono" style={{ fontSize: 11.5 }}>{r.formulaTrace.map((t, i) => <div key={i}>{t}</div>)}</td></tr>}
         </tbody>
       </table></>}
       {r.rules.length > 0 && <>

@@ -108,8 +108,16 @@ describe("Üretim uygunluğu ve determinizm", () => {
   });
   it("onaylı sürüm + onaylı kurallar → üretime uygun", () => {
     const approved = { ...DEMO_TARIFF, isDemo: false, status: "APPROVED" as const };
-    const r = calculate(base, approved, { "R-001": "APPROVED", "R-009": "APPROVED" });
+    const fx = { USD: { rate: "49.6015", date: "2026-10-21", source: "TCMB 2026/199" } };
+    const r = calculate({ ...base, fx }, approved, { "R-001": "APPROVED", "R-009": "APPROVED" });
     expect(r.productionEligible).toBe(true);
+    expect(r.operational?.amount).toBe("4960.15"); // 100 USD × 49,6015
+  });
+  it("kur yoksa TL karşılığı varsayılmaz ve üretime geçmez", () => {
+    const approved = { ...DEMO_TARIFF, isDemo: false, status: "APPROVED" as const };
+    const r = calculate(base, approved, { "R-001": "APPROVED", "R-009": "APPROVED" });
+    expect(r.operational).toBeNull();
+    expect(r.productionBlockers.join(" ")).toMatch(/USD\/TRY kuru yok/);
   });
 });
 

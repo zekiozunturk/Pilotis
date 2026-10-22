@@ -9,12 +9,17 @@ import { STATUS_LABELS, SERVICE_LABELS } from "@/data/catalog";
 import { fmtDT, fmtMoney } from "@/lib/format";
 import type { ServiceTariff } from "@/lib/tariff/types";
 import { TransitionButton, ResolveNoteForm, DeriveForm, AddCaseForm } from "./forms";
+import { evaluateItem } from "@/lib/pricing/pricelist";
+import { getFxTable } from "@/lib/fx";
+import { fmtCcy } from "@/lib/money";
+import { INVOICE_NOTE } from "@/data/catalog";
 
 export async function generateMetadata() { return { title: "Tarife sürümü" }; }
 const tone = (st: string) => (st === "IN_FORCE" || st === "APPROVED" ? "ok" : st === "REPEALED" ? "grey" : "warn");
 const SRC: Record<string, string> = { INDEPENDENT_MANUAL: "Bağımsız elle hesap", OFFICIAL_EXAMPLE: "Resmî tablo", HISTORICAL_JOB: "Geçmiş iş" };
 
 function SvcRow({ name, svc }: { name: string; svc: ServiceTariff }) {
+  if (svc.itemCode) return <tr><td>{SERVICE_LABELS[name] ?? name}</td><td colSpan={2}>Fiyat listesi kalemi <span className="mono"><b>[{svc.itemCode}]</b></span></td><td>{svc.gtCap ? svc.gtCap.toLocaleString("tr-TR") : "—"}</td><td style={{ fontSize: 12 }}>{svc.unit === "HOUR" ? "Saat (kesri tam)" : "Manevra"}{svc.note ? ` · ${svc.note}` : ""}</td></tr>;
   if (svc.pricing === "BOLLARD_PULL") return <tr><td>{SERVICE_LABELS[name] ?? name}</td><td colSpan={3} style={{ fontSize: 12 }}>{svc.bollardBands?.map((b) => `${b.fromT}–${b.toT ?? "∞"} t: ${b.rate}`).join(" · ")} USD/saat</td><td>{svc.unit === "HOUR" ? "Saat (kesri tam)" : "Olay"}</td></tr>;
   const b = svc.bands[0];
   return <tr><td>{SERVICE_LABELS[name] ?? name}</td><td className="mono">{b?.base}</td><td className="mono">{b?.perBlock ? `+${b.perBlock}` : "—"}</td><td>{svc.gtCap ? svc.gtCap.toLocaleString("tr-TR") : "—"}</td><td style={{ fontSize: 12 }}>{svc.unit === "HOUR" ? "Saat" : "Manevra"}{svc.note ? ` · ${svc.note}` : ""}</td></tr>;
@@ -35,6 +40,15 @@ export default async function VersionPage({ params }: { params: Promise<{ id: st
   const cats = Object.entries(def.categories ?? {});
   const open = (def.verificationNotes ?? []).filter((n) => !n.resolved);
   const passCount = refs.filter((r) => r.pass).length;
+  const fxNow = await getFxTable(new Date().toISOString());
+  const sampleVars = { GT: 8450, GT_TAVAN: 8450, BLOK: 8, CEKI: 50, SAAT: 1, ROMORKOR: 1 };
+  const itemRows = (def.items ?? []).map((it) => {
+    try {
+      const r = evaluateItem(def.items!, it.code, sampleVars, fxNow);
+      const tl = r.currency === "TRY" ? r.value.toFixed(2) : fxNow[r.currency] ? r.value.times(fxNow[r.currency]!.rate).toFixed(2) : null;
+      return { it, value: r.value.toDecimalPlaces(4).toString(), tl, err: null as string | null };
+    } catch (e) { return { it, value: null, tl: null, err: (e as Error).message }; }
+  });
   const serviceKinds = [...new Set([...Object.keys(def.services), ...cats.flatMap(([, c]) => Object.keys(c.services))])];
 
   return (
@@ -95,11 +109,34 @@ export default async function VersionPage({ params }: { params: Promise<{ id: st
         {(cats.length ? cats : [["_", { label: "Genel", services: def.services }] as const]).map(([k, c]) => (
           <div className="card" key={k}>
             <h2>{c.label}</h2>
-            <table><thead><tr><th>Hizmet</th><th>İlk 1000 GT</th><th>Her ilave 1000 GT</th><th>GT tavanı</th><th>Birim</th></tr></thead>
+            <table><thead><tr><th>Hizmet</th><th colSpan={2}>Fiyatlandırma</th><th>GT tavanı</th><th>Birim</th></tr></thead>
               <tbody>{Object.entries(c.services).map(([sk, svc]) => svc && <SvcRow key={sk} name={sk} svc={svc} />)}</tbody></table>
           </div>
         ))}
       </div>
+
+      {itemRows.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <h2>Fiyat listesi ({itemRows.length} kalem)</h2>
+            <span className="muted" style={{ fontSize: 12 }}>Örnek değer: GT 8.450, çeki 50 t · kur: {fxNow.USD ? `USD ${fxNow.USD.rate} (${fxNow.USD.source}, ${fxNow.USD.date})` : "yok"}</span>
+          </div>
+          <div className="tablewrap" style={{ border: 0, maxHeight: 520, overflowY: "auto" }}>
+            <table style={{ fontSize: 12.5 }}>
+              <thead><tr><th>Kod</th><th>Kalem</th><th>Birim</th><th>PB</th><th>Fiyat / formül</th><th>Hizmet</th><th>Kategori</th><th>Örnek</th><th>TL karşılığı</th></tr></thead>
+              <tbody>{itemRows.map(({ it, value, tl, err }) => (
+                <tr key={it.code}>
+                  <td className="mono"><b>{it.code}</b></td><td>{it.name}{it.note && <div className="muted" style={{ fontSize: 11 }}>{it.note}</div>}</td><td>{it.unit}</td><td><span className={`badge ${it.currency === "TRY" ? "ok" : "grey"}`}>{it.currency}</span></td>
+                  <td className="mono">{it.formula ? <>= {it.formula}</> : it.price}</td>
+                  <td>{it.serviceKind ? SERVICE_LABELS[it.serviceKind] : "—"}</td><td style={{ fontSize: 12 }}>{it.serviceKind ? (it.category ? def.categories?.[it.category]?.label ?? it.category : "Tümü") : "—"}</td>
+                  <td className="mono">{value !== null ? fmtCcy(value, it.currency) : <span style={{ color: "var(--bad)" }}>{err}</span>}</td>
+                  <td className="mono">{tl ? fmtCcy(tl, "TRY") : value !== null ? <span className="muted">kur yok</span> : ""}</td>
+                </tr>))}</tbody>
+            </table>
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{INVOICE_NOTE}</div>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h2>Artırım ve indirimler</h2>

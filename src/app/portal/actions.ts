@@ -6,6 +6,9 @@ import { db, schema as s } from "@/db";
 import { currentScope } from "@/lib/session";
 import { calculate, selectTariffVersion } from "@/lib/tariff/engine";
 import { loadTariffs, ruleStatusMap } from "@/lib/ops";
+import { getFxTable } from "@/lib/fx";
+import { categorize, isContainerOrRoro } from "@/lib/tariff/category";
+import { holidayAt } from "@/data/holidays";
 import { createOperationRecord, istanbulDate } from "@/lib/create-op";
 import { missingInfo, type Declaration } from "@/lib/declaration";
 import { PACKAGES, OPERATION_TYPES } from "@/data/catalog";
@@ -14,7 +17,8 @@ import type { CalcInput, ServiceKind } from "@/lib/tariff/types";
 export interface PackageCard {
   code: string; title: string; scope: string; outOfScope: string; docs: string[]; review: boolean;
   lines: { kind: string; amount: string | null; missing: string[] }[];
-  total: string | null; currency: string; tariffLabel: string | null; isDemoTariff: boolean; eligible: boolean;
+  total: string | null; currency: string; totalTRY: string | null; fxNote: string | null; categoryReason: string | null;
+  tariffLabel: string | null; isDemoTariff: boolean; eligible: boolean;
   missingInfo: string[]; notes: string[];
 }
 export type PortalState = { ok: boolean; message?: string; cards?: PackageCard[]; input?: Record<string, string> } | null;
@@ -48,28 +52,39 @@ export async function estimatePackages(_: PortalState, f: FormData): Promise<Por
     let tariffError: string | null = null;
     try { version = selectTariffVersion(tariffs, when.toISOString()); } catch (e) { tariffError = (e as Error).message; }
     const repair = f.get("repair") === "on";
+    const fx = await getFxTable(when.toISOString());
+    const cab = String(f.get("isCabotage") || "");
+    const cat = categorize({ vesselType: vessel?.vesselType, isCabotage: cab === "" ? null : cab === "1", isLinerService: f.get("isLiner") === "on" ? true : null });
+    const holiday = holidayAt(when.toISOString());
     const minsToStart = (when.getTime() - Date.now()) / 60000;
     const cards: PackageCard[] = PACKAGES.map((p) => {
       const t = OPERATION_TYPES.find((x) => x.code === p.code)!;
       const notes: string[] = [];
+
       if (minsToStart < 360) notes.push("İstenen zaman 6 saatten yakın — olağan talep süresi (R-011, doğrulanıyor) karşılanmayabilir");
       if (p.needsRepair && !repair) notes.push("Bakım-onarım amacı belgelenmedikçe indirim uygulanmaz");
       const conds: string[] = [];
-      if (decl.dgClass) conds.push("DANGEROUS_CARGO");
+      if (decl.dgClass) conds.push("DANGEROUS_CARGO", isContainerOrRoro(vessel?.vesselType) ? "DANGEROUS_CARGO_CRP" : "DANGEROUS_CARGO_OTHER");
+      if (vessel?.flag?.toUpperCase() === "TR") conds.push("TR_FLAG");
+      if (holiday) { conds.push("HOLIDAY"); notes.push(`${holiday.name}: bayram/tatil artırımı uygulanabilir`); }
+      if (cat.assumed) notes.push(`Kategori: ${cat.reason}`);
       if (p.needsRepair && repair) conds.push("REPAIR_YARD");
       if (decl.engine === "makinesiz") conds.push("NO_ENGINE");
       const lines = p.review || !version ? [] : t.kinds.filter((k) => ["PILOTAGE", "TOWAGE", "MOORING", "UNMOORING"].includes(k)).map((k) => {
-        const input: CalcInput = { operationRef: "TAHMIN", serviceKind: k as ServiceKind, serviceDate: when.toISOString(), gt: decl.gt ?? null, measuredMinutes: 60, allocatedUnits: 1, requestedUnits: 1, extraUnitsWrittenRequest: false, conditionCodes: conds, completion: "COMPLETED" };
+        const input: CalcInput = { operationRef: "TAHMIN", serviceKind: k as ServiceKind, serviceDate: when.toISOString(), gt: decl.gt ?? null, measuredMinutes: 60, allocatedUnits: 1, requestedUnits: 1, extraUnitsWrittenRequest: false, conditionCodes: conds, completion: "COMPLETED", tariffCategory: cat.code, categoryReason: cat.reason, categoryAssumed: cat.assumed, fx };
         const r = calculate(input, version!, statuses);
-        return { kind: k, amount: r.missing.length ? null : r.netAmount, missing: r.missing, eligible: r.productionEligible };
+        return { kind: k, amount: r.missing.length ? null : r.netAmount, missing: r.missing, eligible: r.productionEligible, cur: r.currency, tl: r.missing.length ? null : r.operational?.amount ?? null, op: r.operational };
       });
       const priced = lines.filter((l) => l.amount !== null);
       const total = lines.length && priced.length === lines.length ? priced.reduce((a, l) => a + Number(l.amount), 0).toFixed(2) : null;
+      const totalTRY = total && lines.every((l) => l.tl !== null) ? lines.reduce((a, l) => a + Number(l.tl), 0).toFixed(2) : null;
+      const op0 = lines.find((l) => l.op && l.cur !== "TRY")?.op;
+      const fxNote = op0 ? `${lines[0].cur} × ${op0.rate} (${op0.rateSource}, ${op0.rateDate})` : total && !totalTRY ? "Kur bulunamadı — TL karşılığı hesaplanamadı" : null;
       if (tariffError) notes.push(tariffError);
       if (t.kinds.includes("TOWAGE")) notes.push("Römorkör sayısı emniyet değerlendirmesiyle kesinleşir; tahmin 1 römorkör × 1 saat varsayar");
       return {
         code: p.code, title: p.title, scope: p.scope, outOfScope: p.outOfScope, docs: p.docs, review: !!p.review,
-        lines: lines.map(({ kind, amount, missing }) => ({ kind, amount, missing })), total, currency: version?.currency ?? "USD",
+        lines: lines.map(({ kind, amount, missing }) => ({ kind, amount, missing })), total, currency: lines[0]?.cur ?? version?.currency ?? "USD", totalTRY, fxNote, categoryReason: cat.reason,
         tariffLabel: version?.label ?? null, isDemoTariff: !!version?.isDemo, eligible: lines.length > 0 && lines.every((l) => l.eligible),
         missingInfo: missingInfo(decl, vessel?.vesselType), notes,
       };
@@ -91,7 +106,7 @@ export async function addToCart(_: SimpleState, f: FormData): Promise<SimpleStat
     await db.insert(s.cartItems).values({
       cartId, vesselId: String(f.get("vesselId")), typeCode, fromFacilityId: String(f.get("fromFacilityId") || "") || null,
       toFacilityId: String(f.get("toFacilityId") || "") || null, plannedStart: istanbulDate(String(f.get("plannedStart"))),
-      declaration: readDecl(f), estimate: estimate ? { total: estimate, currency: String(f.get("currency") || "USD"), at: new Date().toISOString() } : null,
+      declaration: readDecl(f), estimate: estimate ? { total: estimate, currency: String(f.get("currency") || "USD"), totalTRY: String(f.get("estimateTRY") || "") || null, at: new Date().toISOString() } : null,
     });
     revalidatePath("/portal");
     return { ok: true, message: "Sepete eklendi — bu bir rezervasyon değildir" };

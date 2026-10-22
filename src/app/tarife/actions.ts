@@ -7,7 +7,8 @@ import { currentRole, ROLE_LABELS } from "@/lib/session";
 import type { Role } from "@/lib/workflow";
 import { recordAudit } from "@/lib/ops";
 import { loadVersion, runReferenceCases } from "@/lib/tariff/repo";
-import { deriveByIndex, diffDefinitions, approvalBlockers, overlaps, type Rounding } from "@/lib/tariff/admin";
+import { deriveByIndex, diffDefinitions, approvalBlockers, overlaps, syncServicesFromItems, type Rounding } from "@/lib/tariff/admin";
+import { validatePriceList, CURRENCIES, type PriceItem, type Currency } from "@/lib/pricing/pricelist";
 import type { TariffDefinition, ServiceKind } from "@/lib/tariff/types";
 
 export type TState = { ok: boolean; message: string; at?: string } | null;
@@ -74,6 +75,27 @@ export async function saveDraft(_: TState, f: FormData): Promise<TState> {
     };
     apply("_", def.services);
     for (const [ck, c] of Object.entries(def.categories ?? {})) apply(ck, c.services);
+    // Fiyat listesi (tek doğruluk kaynağı): doğrula → hizmet eşlemesini kalemlerden kur
+    let next: TariffDefinition = def;
+    const rawItems = f.get("items");
+    if (typeof rawItems === "string" && rawItems) {
+      let parsed: PriceItem[];
+      try { parsed = JSON.parse(rawItems); } catch { return no("Fiyat listesi verisi okunamadı"); }
+      const items: PriceItem[] = parsed.map((i) => ({
+        code: String(i.code ?? "").trim(), name: String(i.name ?? "").trim(), unit: String(i.unit ?? "").trim() || "Adet",
+        currency: (CURRENCIES.includes(i.currency as Currency) ? i.currency : "TRY") as Currency,
+        price: i.price != null && String(i.price).trim() !== "" ? String(i.price).trim().replace(",", ".") : null,
+        formula: i.formula?.trim() ? i.formula.trim() : null,
+        serviceKind: i.serviceKind || null, category: i.category || null, note: i.note?.trim() || null,
+      }));
+      const issues = validatePriceList(items);
+      if (issues.length) return no(`Fiyat listesi kaydedilmedi — ${issues.length} hata: ${issues.slice(0, 6).map((i) => `[${i.code}] ${i.message}`).join(" · ")}`);
+      def.items = items;
+      const sync = syncServicesFromItems(def);
+      if (sync.issues.length) return no(`Hizmet eşlemesi hatası: ${sync.issues.join(" · ")}`);
+      next = sync.def;
+    }
+    Object.assign(def, next);
     for (const a of def.adjustments) { const r = num(`adj|${a.code}`); if (r !== null) { if (Number(r) > 3) throw new Error(`${a.label}: oran 0–3 arasında ondalık olmalı (0.20 = %20)`); a.rate = r; } }
     const label = String(f.get("label") || v.row.label).trim();
     const changes = diffDefinitions(before, def);

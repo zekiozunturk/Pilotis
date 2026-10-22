@@ -5,6 +5,8 @@ import { currentScope } from "@/lib/session";
 import { OPERATION_TYPES } from "@/data/catalog";
 import { fmtDT, fmtMoney } from "@/lib/format";
 import { PortalPlanner } from "./planner";
+import { getDisplay } from "@/lib/display";
+import { INVOICE_NOTE } from "@/data/catalog";
 import { STATUS_SETS } from "@/lib/labels";
 const L = (k: string, v: string) => STATUS_SETS.find((x) => x.key === k)!.values[v] ?? v;
 import { CartItemControls, SubmitCartForm } from "./cart";
@@ -49,9 +51,9 @@ export default async function Portal({ searchParams }: { searchParams: Promise<{
         {sp.gonderildi.split(",").filter(Boolean).map((r) => <Link key={r} className="mono" href={`/operasyonlar/${r}`} style={{ marginRight: 10 }}>{r}</Link>)}
         <div>Talepler planlama ve emniyet değerlendirmesinden sonra kesinleşir; fatura muhatabı onayı ayrıca istenir.</div></div></div>}
       {!party ? <div className="alert info"><span>ⓘ</span><div>Personel olarak bir müşteri firması adına talep oluşturmak için yukarıdan firma seçin. Müşteri hesapları doğrudan kendi firmalarıyla açılır.</div></div> : <>
-        <div className="alert info" style={{ marginBottom: 16 }}><span>ⓘ</span><div><b>{party.legalName}</b>Sepete eklemek kaynak rezervasyonu veya operasyon izni değildir. Tahmini bedeller ÖRNEK tarifeyle hesaplanır ve bağlayıcı değildir.</div></div>
+        <div className="alert info" style={{ marginBottom: 16 }}><span>ⓘ</span><div><b>{party.legalName}</b>Sepete eklemek kaynak rezervasyonu veya operasyon izni değildir. Tahmini bedeller onaylanmamış tarifeyle hesaplanır ve bağlayıcı değildir.</div></div>
         <PortalPlanner vessels={vessels.map((v) => ({ id: v.id, label: `${v.name}${v.gt ? ` · ${Number(v.gt).toLocaleString("tr-TR")} GT` : " · GT bilinmiyor"}`, gt: v.gt, type: v.vesselType }))}
-          facilities={facilities.map((f) => ({ id: f.id, label: f.name }))} hidden={hidden} />
+          facilities={facilities.map((f) => ({ id: f.id, label: f.name }))} hidden={hidden} display={await getDisplay()} invoiceNote={INVOICE_NOTE} />
 
         <div className="card" style={{ marginTop: 16 }}>
           <h2>Sepet ({items.length})</h2>
@@ -60,10 +62,10 @@ export default async function Portal({ searchParams }: { searchParams: Promise<{
               <table>
                 <thead><tr><th>Gemi</th><th>Hizmet</th><th>Tesis</th><th>İstenen zaman</th><th>Tahmini</th><th>Fatura muhatabı</th><th></th></tr></thead>
                 <tbody>{items.map((it) => {
-                  const est = it.estimate as { total: string; currency: string } | null;
+                  const est = it.estimate as { total: string; currency: string; totalTRY?: string } | null;
                   return <tr key={it.id}>
                     <td>{vName(it.vesselId)}</td><td>{OPERATION_TYPES.find((t) => t.code === it.typeCode)?.nameTr}</td><td style={{ fontSize: 12.5 }}>{fName(it.fromFacilityId)} → {fName(it.toFacilityId)}</td>
-                    <td>{fmtDT(it.plannedStart)}</td><td>{est?.total ? fmtMoney(est.total, est.currency) : "İnceleme"}</td>
+                    <td>{fmtDT(it.plannedStart)}</td><td>{est?.totalTRY ? fmtMoney(est.totalTRY, "TRY") : est?.total ? fmtMoney(est.total, est.currency) : "İnceleme"}</td>
                     <td colSpan={2}><CartItemControls itemId={it.id} billingPartyId={it.billingPartyId} parties={parties.map((p) => ({ id: p.id, label: p.legalName }))} hidden={hidden} /></td>
                   </tr>;
                 })}</tbody>

@@ -8,6 +8,8 @@ import { createHash } from "node:crypto";
 import type {
   CalcInput, CalcResult, RuleTrace, TariffVersionInput, ServiceTariff, GtBand, HourRounding, BollardBand,
 } from "./types";
+import { evaluateItem, fxRate, OPERATIONAL_CURRENCY, type Currency } from "../pricing/pricelist";
+import { FormulaError } from "../pricing/formula";
 
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
@@ -90,7 +92,7 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
   const inputHash = hashInputs(input, version.id);
   const { svc, categoryLabel, error } = resolveService(version, input.serviceKind, input.tariffCategory);
 
-  const base: Omit<CalcResult, "baseAmount" | "netAmount" | "billedQuantity" | "measuredQuantity" | "billedUnits" | "adjustmentRate" | "categoryReason"> = {
+  const base: Omit<CalcResult, "baseAmount" | "netAmount" | "billedQuantity" | "measuredQuantity" | "billedUnits" | "adjustmentRate" | "categoryReason" | "operational"> & { operational: CalcResult["operational"] } = {
     operationRef: input.operationRef,
     serviceKind: input.serviceKind,
     tariffVersionId: version.id,
@@ -101,31 +103,57 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
       conditionCodes: input.conditionCodes, completion: input.completion, serviceDate: input.serviceDate,
       ...(input.tariffCategory ? { tariffCategory: input.tariffCategory } : {}), ...(input.bollardPullT != null ? { bollardPullT: input.bollardPullT } : {}),
     },
-    rules, missing, productionEligible: false, productionBlockers: blockers, inputHash,
+    rules, missing, productionEligible: false, productionBlockers: blockers, inputHash, operational: null,
     calcId: `CALC-${inputHash.slice(0, 12).toUpperCase()}`,
   };
-  const fail = (reason: string) => ({ ...base, categoryReason: reason, baseAmount: "0", measuredQuantity: null, billedQuantity: "0", billedUnits: 0, adjustmentRate: "0", netAmount: "0", productionBlockers: [...blockers, ...missing] });
+  const fail = (reason: string): CalcResult => ({ ...base, categoryReason: reason, baseAmount: "0", measuredQuantity: null, billedQuantity: "0", billedUnits: 0, adjustmentRate: "0", netAmount: "0", operational: null, productionBlockers: [...blockers, ...missing] });
 
   if (!svc) { missing.push(error ?? "Hizmet tarifesi yok"); return fail("-"); }
 
-  const byBollard = svc.pricing === "BOLLARD_PULL";
+  const byItem = !!(svc.itemCode && def.items?.length);
+  const byBollard = !byItem && svc.pricing === "BOLLARD_PULL";
   // Bilinmeyen değer sıfır kabul edilmez
-  if (!byBollard && (input.gt === null || input.gt === undefined)) missing.push("Doğrulanmış GT değeri yok");
+  if (!byItem && !byBollard && (input.gt === null || input.gt === undefined)) missing.push("Doğrulanmış GT değeri yok");
   if (byBollard && (input.bollardPullT === null || input.bollardPullT === undefined)) missing.push("Römorkör çeki gücü (sertifikalı) yok");
   if (svc.unit === "HOUR" && (input.measuredMinutes === null || input.measuredMinutes === undefined)) missing.push("Gerçekleşen hizmet süresi yok");
   if (missing.length) return fail("Eksik girdi nedeniyle hesaplanamadı");
 
   let unitAmount: Decimal;
   let categoryReason: string;
+  let listCurrency: Currency = version.currency as Currency;
+  let formulaTrace: string[] | undefined;
   const catText = categoryLabel ? `${categoryLabel}${input.categoryReason ? ` (${input.categoryReason})` : ""} · ` : "";
-  if (byBollard) {
+  const rawGt = input.gt ?? null;
+  const cappedGt = rawGt !== null && svc.gtCap && rawGt > svc.gtCap ? svc.gtCap : rawGt;
+  if (byItem) {
+    const item = def.items!.find((i) => i.code === svc.itemCode);
+    if (!item) { missing.push(`Fiyat listesinde [${svc.itemCode}] kalemi yok`); return fail("Fiyat listesi kalemi bulunamadı"); }
+    const vars = {
+      GT: rawGt, GT_TAVAN: cappedGt,
+      BLOK: cappedGt === null ? null : Decimal.max(0, new Decimal(cappedGt).minus(1000)).div(1000).ceil(),
+      CEKI: input.bollardPullT ?? null,
+      SAAT: svc.unit === "HOUR" && input.measuredMinutes != null ? billedHours(input.measuredMinutes, svc.rounding ?? { mode: "CEIL_HOUR", minimumHours: 1 }) : 1,
+      ROMORKOR: input.requestedUnits,
+    };
+    try {
+      const r = evaluateItem(def.items!, item.code, vars, input.fx ?? {});
+      unitAmount = r.value; listCurrency = r.currency; formulaTrace = r.trace;
+    } catch (e) {
+      if (e instanceof FormulaError) {
+        const m = e.message.includes("GT değeri bilinmiyor") ? "Doğrulanmış GT değeri yok" : e.message.includes("CEKI değeri bilinmiyor") ? "Römorkör çeki gücü (sertifikalı) yok" : e.message;
+        missing.push(m); return fail("Fiyat listesi formülü hesaplanamadı");
+      }
+      throw e;
+    }
+    categoryReason = `${catText}[${item.code}] ${item.name}${rawGt !== null ? ` · GT ${rawGt}${cappedGt !== rawGt ? ` → tavan ${cappedGt}` : ""}` : ""}${input.bollardPullT != null ? ` · çeki ${input.bollardPullT} t` : ""}`;
+    if (rawGt !== null && cappedGt !== rawGt) rules.push({ ruleCode: "R-023", applied: true, description: "GT tavanı", reason: `${svc.gtCap} GT üzeri gemilerde ${svc.gtCap} GT ücreti uygulanır` });
+  } else if (byBollard) {
     const b = findBollard(svc.bollardBands ?? [], input.bollardPullT as number);
     if (!b) { missing.push(`${input.bollardPullT} t çeki gücü için tarife aralığı yok`); return fail("Çeki gücü aralığı bulunamadı"); }
     unitAmount = new Decimal(b.rate);
     categoryReason = `${catText}Çeki gücü ${input.bollardPullT} t → ${b.fromT}–${b.toT ?? "∞"} t aralığı`;
   } else {
-    const rawGt = input.gt as number;
-    const gt = svc.gtCap && rawGt > svc.gtCap ? svc.gtCap : rawGt;
+    const gt = cappedGt as number;
     const band = findBand(svc.bands, gt);
     if (!band) { missing.push(`GT ${rawGt} için kademe yok`); return fail("Kademe bulunamadı"); }
     unitAmount = bandAmount(band, gt);
@@ -215,15 +243,33 @@ export function calculate(input: CalcInput, version: TariffVersionInput, ruleSta
     if (st && !PROD_STATUSES.has(st)) blockers.push(`${code} kuralı ${st} statüsünde`);
   }
 
+  const net = amount.toDecimalPlaces(def.moneyScale);
+  // Operasyonel para birimi TL: liste para birimi farklıysa hizmet anındaki kurla çevrilir (nihai tutar üzerinden)
+  let operational: CalcResult["operational"] = null;
+  if (listCurrency === OPERATIONAL_CURRENCY) {
+    operational = { amount: net.toFixed(2), currency: "TRY", rate: "1", rateDate: input.serviceDate.slice(0, 10), rateSource: "—" };
+  } else {
+    const fx = input.fx?.[listCurrency];
+    if (fx) {
+      operational = { amount: net.times(fxRate(input.fx!, listCurrency)).toDecimalPlaces(2).toFixed(2), currency: "TRY", rate: fx.rate, rateDate: fx.date, rateSource: fx.source };
+    } else {
+      blockers.push(`${listCurrency}/TRY kuru yok — TL karşılığı hesaplanamadı`);
+    }
+  }
+
   return {
     ...base,
     categoryReason,
+    currency: listCurrency,
     baseAmount: unitAmount.toFixed(4),
     measuredQuantity,
     billedQuantity: qty.toString(),
     billedUnits,
     adjustmentRate: rate.toString(),
-    netAmount: amount.toDecimalPlaces(def.moneyScale).toFixed(def.moneyScale),
+    netAmount: net.toFixed(def.moneyScale),
+    operational,
+    itemCode: byItem ? svc.itemCode : null,
+    formulaTrace,
     productionEligible: blockers.length === 0,
     productionBlockers: blockers,
   };

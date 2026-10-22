@@ -8,6 +8,9 @@ import { STATUS_SETS, EVENT_LABELS } from "@/lib/labels";
 import { SERVICE_LABELS } from "@/data/catalog";
 import { fmtDT, fmtTime, fmtMin, fmtNum, fmtMoney } from "@/lib/format";
 import { CalcCard } from "@/components/CalcCard";
+import { getDisplay } from "@/lib/display";
+import { displayAlt, fmtCcy } from "@/lib/money";
+import { INVOICE_NOTE } from "@/data/catalog";
 import { FieldActions } from "./field";
 import { VerifyForm, BillingPartyForm, BillingDecisionForm, SaveCalcForm } from "./forms";
 import { DocumentsPanel, type DocRow } from "./docs";
@@ -47,8 +50,10 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
   const declarationChecked = o.events.some((e) => e.type === "DECLARATION_CHECKED");
   const vGt = verifiedGt(o);
   const declared = o.requests.find((r) => r.layer === "CUSTOMER_DECLARED")?.payload as { gt?: number | null } | undefined;
-  const total = results.reduce((a, r) => a + (r.missing.length ? 0 : Number(r.netAmount)), 0);
-  const currency = results[0]?.currency ?? "USD";
+  const priced = results.filter((r) => !r.missing.length);
+  const totalTL = priced.length && priced.every((r) => r.operational) ? priced.reduce((a, r) => a + Number(r.operational!.amount), 0).toFixed(2) : null;
+  const display = await getDisplay();
+  const totalAlt = displayAlt(totalTL, display);
   const opRec = o.op as unknown as Record<string, string>;
 
   return (
@@ -164,10 +169,11 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
           <div className="card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <h2>Bu bedel neden oluştu?</h2>
-              {results.length > 0 && <b style={{ fontSize: 18, color: "var(--navy-800)" }}>{fmtMoney(String(total), currency)}</b>}
+              {results.length > 0 && <div style={{ textAlign: "right" }}><b style={{ fontSize: 18, color: "var(--navy-800)" }}>{totalTL ? fmtCcy(totalTL, "TRY") : "TL toplam: —"}</b>{totalAlt && <div className="muted" style={{ fontSize: 11.5 }}>{totalAlt}</div>}</div>}
             </div>
             {error && <div className="alert bad"><span>⚠</span><div>{error}</div></div>}
-            <div className="grid" style={{ gap: 10 }}>{results.map((r) => <CalcCard key={r.serviceKind} r={r} />)}</div>
+            <div className="grid" style={{ gap: 10 }}>{results.map((r) => <CalcCard key={r.serviceKind} r={r} display={display} />)}</div>
+            <div className="alert info" style={{ marginTop: 10 }}><span>₺</span><div>{INVOICE_NOTE}</div></div>
             {internal && <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
               <SaveCalcForm opRef={o.op.ref} />
               <span className="muted" style={{ fontSize: 12 }}>Kayıt, girdi hash'i ve tarife sürümüyle sabitlenir.</span>
@@ -176,7 +182,7 @@ export default async function OperationDetail({ params }: { params: Promise<{ re
               <div className="sep" />
               <h3>Kayıtlı hesaplar</h3>
               <table><thead><tr><th>Zaman</th><th>Tür</th><th>Hizmet</th><th>Tutar</th><th>Üretim</th></tr></thead><tbody>
-                {o.calcs.map((c) => <tr key={c.id}><td>{fmtDT(c.createdAt)}</td><td>{c.kind}</td><td>{SERVICE_LABELS[(c.breakdown as { serviceKind: string }).serviceKind]}</td><td>{fmtMoney(c.netAmount, c.currency)}</td><td>{c.productionEligible ? <span className="badge ok">Uygun</span> : <span className="badge warn">Engelli</span>}</td></tr>)}
+                {o.calcs.map((c) => <tr key={c.id}><td>{fmtDT(c.createdAt)}</td><td>{c.kind}</td><td>{SERVICE_LABELS[(c.breakdown as { serviceKind: string }).serviceKind]}</td><td>{(c.breakdown as { operational?: { amount: string } | null }).operational ? fmtCcy((c.breakdown as { operational: { amount: string } }).operational.amount, "TRY") : "—"}<div className="muted" style={{ fontSize: 11 }}>{fmtMoney(c.netAmount, c.currency)}</div></td><td>{c.productionEligible ? <span className="badge ok">Uygun</span> : <span className="badge warn">Engelli</span>}</td></tr>)}
               </tbody></table>
             </>}
           </div>

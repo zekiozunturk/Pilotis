@@ -4,11 +4,12 @@ import { estimatePackages, addToCart, type PortalState } from "./actions";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import type { ActionState } from "@/app/actions";
 import { SERVICE_LABELS } from "@/data/catalog";
+import { displayAlt, type DisplayLike } from "@/lib/money";
 
 type Opt = { id: string; label: string };
 const money = (v: string, c: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(Number(v));
 
-export function PortalPlanner({ vessels, facilities, hidden }: { vessels: (Opt & { gt: string | null; type: string | null })[]; facilities: Opt[]; hidden: Record<string, string> }) {
+export function PortalPlanner({ vessels, facilities, hidden, display, invoiceNote }: { vessels: (Opt & { gt: string | null; type: string | null })[]; facilities: Opt[]; hidden: Record<string, string>; display: DisplayLike; invoiceNote: string }) {
   const [state, action, pending] = useActionState<PortalState, FormData>(estimatePackages, null);
   const [vesselId, setVesselId] = useState("");
   const v = vessels.find((x) => x.id === vesselId);
@@ -31,12 +32,17 @@ export function PortalPlanner({ vessels, facilities, hidden }: { vessels: (Opt &
           <div className="field"><label>Tehlikeli yük sınıfı</label><input name="dgClass" /></div>
           <div className="field"><label>UN no</label><input name="unNumber" /></div>
         </div>
+        <div className="grid g2" style={{ gap: 8 }}>
+          <div className="field"><label>Kabotaj seferi mi?</label><select name="isCabotage" defaultValue=""><option value="">Bilinmiyor</option><option value="1">Evet (Türk limanları arası)</option><option value="0">Hayır</option></select></div>
+          <div className="field" style={{ display: "flex", alignItems: "flex-end" }}><label className="check"><input type="checkbox" name="isLiner" /> Düzenli hat (liner)</label></div>
+        </div>
         {/tanker/i.test(v?.type ?? "") && <label className="check"><input type="checkbox" name="gasFreeCert" /> Gas-free belgesi mevcut</label>}
         <div style={{ marginTop: 12 }}><button className="btn orange" disabled={pending}>{pending ? "Hesaplanıyor…" : "Önerilen paketleri göster"}</button></div>
       </form>
 
       <div>
         {state?.ok === false && <div className="alert bad"><span>⚠</span><div>{state.message}</div></div>}
+        <div className="alert info" style={{ marginBottom: 10 }}><span>₺</span><div>{invoiceNote}</div></div>
         {!state?.cards && <div className="card muted">Bilgileri girip <b>Önerilen paketleri göster</b>'e basın. Her kartta kapsam, tahmini bedel, gerekli belgeler ve eksik bilgiler görünür.</div>}
         {state?.cards && (
           <div className="grid g2">
@@ -45,7 +51,9 @@ export function PortalPlanner({ vessels, facilities, hidden }: { vessels: (Opt &
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <div><div className="mono muted" style={{ fontSize: 11 }}>{c.code}</div><h3 style={{ fontSize: 15, margin: 0 }}>{c.title}</h3></div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--navy-800)" }}>{c.review ? "İnceleme" : c.total ? money(c.total, c.currency) : "—"}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--navy-800)" }}>{c.review ? "İnceleme" : c.totalTRY ? money(c.totalTRY, "TRY") : c.total ? <span style={{ fontSize: 13, color: "var(--warn)" }}>TL karşılığı yok</span> : "—"}</div>
+                    {!c.review && c.total && c.currency !== "TRY" && <div style={{ fontSize: 11.5 }}>Liste: {money(c.total, c.currency)}</div>}
+                    {!c.review && displayAlt(c.totalTRY, display) && <div className="muted" style={{ fontSize: 11 }}>{displayAlt(c.totalTRY, display)}</div>}
                     {!c.review && <div className="muted" style={{ fontSize: 11 }}>tahmini, bağlayıcı değil</div>}
                   </div>
                 </div>
@@ -53,10 +61,11 @@ export function PortalPlanner({ vessels, facilities, hidden }: { vessels: (Opt &
                 {c.lines.length > 0 && <div style={{ fontSize: 12.5 }}>{c.lines.map((l) => <div key={l.kind} style={{ display: "flex", justifyContent: "space-between" }}><span>{SERVICE_LABELS[l.kind]}</span><span>{l.amount ? money(l.amount, c.currency) : <span className="badge warn">{l.missing[0]}</span>}</span></div>)}</div>}
                 <div style={{ fontSize: 12 }}><b>Gerekli belgeler:</b> {c.docs.join(", ")}</div>
                 {c.missingInfo.length > 0 && <div className="alert warn" style={{ padding: "6px 10px" }}><span>⚠</span><div><b>Eksik bilgi</b>{c.missingInfo.join(", ")}</div></div>}
+                {c.fxNote && <div className="muted" style={{ fontSize: 11.5 }}>• Kur: {c.fxNote}</div>}
                 {c.notes.map((n, i) => <div key={i} className="muted" style={{ fontSize: 11.5 }}>• {n}</div>)}
                 {c.isDemoTariff && <span className="badge demo" style={{ alignSelf: "flex-start" }}>ÖRNEK tarife</span>}
                 <div style={{ marginTop: "auto" }}>
-                  <ActionForm action={addToCart as (s: ActionState, f: FormData) => Promise<ActionState>} hidden={{ ...hidden, ...state.input, typeCode: c.code, estimate: c.total ?? "", currency: c.currency }}>
+                  <ActionForm action={addToCart as (s: ActionState, f: FormData) => Promise<ActionState>} hidden={{ ...hidden, ...state.input, typeCode: c.code, estimate: c.total ?? "", estimateTRY: c.totalTRY ?? "", currency: c.currency }}>
                     <SubmitButton className="btn secondary">Sepete ekle</SubmitButton>
                   </ActionForm>
                 </div>

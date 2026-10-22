@@ -6,7 +6,7 @@ import { REFERENCE_CASES } from "../data/reference-cases";
 import { sql } from "drizzle-orm";
 
 async function main() {
-  await db.execute(sql`TRUNCATE reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -50,6 +50,11 @@ async function main() {
     sourceId: r.basis.startsWith("KRP") ? src.id : null,
   })));
   await db.insert(s.openIssues).values(OPEN_ISSUES);
+  // Gerçek TCMB bülteni (kaynak: https://www.tcmb.gov.tr/kurlar/today.xml, 21.10.2026, Bülten 2026/199)
+  await db.insert(s.exchangeRates).values([
+    { currency: "USD", bulletinDate: "2026-10-21", bulletinNo: "2026/199", forexBuying: "49.5123", forexSelling: "49.6015", source: "TCMB", enteredBy: "seed" },
+    { currency: "EUR", bulletinDate: "2026-10-21", bulletinNo: "2026/199", forexBuying: "55.5780", forexSelling: "55.6781", source: "TCMB", enteredBy: "seed" },
+  ]);
 
   const [fam] = await db.insert(s.tariffFamilies).values({ kind: "MINISTRY", name: "Bakanlık KRP hizmet tarifesi" }).returning();
   await db.insert(s.tariffVersions).values({
