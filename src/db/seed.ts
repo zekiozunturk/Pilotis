@@ -41,7 +41,7 @@ async function main() {
   }).returning();
 
   // Filo (gerçek adlar, teknik özellik doğrulanmamış — AK-01)
-  await db.insert(s.fleetAssets).values(FLEET_SEED.map((f) => ({ ...f, code: "code" in f ? f.code : null, siteName: "siteName" in f ? f.siteName : null, type: f.type as "TUG", specVerified: false })));
+  await db.insert(s.fleetAssets).values(FLEET_SEED.map((f) => ({ ...f, code: "code" in f ? f.code : null, siteName: "siteName" in f ? f.siteName : null, type: f.type as "TUG", photoCredit: "photoCredit" in f ? f.photoCredit : null, photoIllustrative: "photoIllustrative" in f ? f.photoIllustrative : false, specVerified: false })));
 
   await db.insert(s.operationTypes).values(OPERATION_TYPES.map((o) => ({
     code: o.code, nameTr: o.nameTr, nameEn: o.nameEn, serviceKinds: o.kinds, tariffFamilies: o.families, unit: o.unit,

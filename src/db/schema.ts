@@ -400,6 +400,8 @@ export const fleetAssets = pgTable("fleet_assets", {
   enginePowerKw: numeric("engine_power_kw", { precision: 8, scale: 1 }),
   buildYear: integer("build_year"),
   photoUrl: text("photo_url"),
+  photoCredit: text("photo_credit"),           // fotoğraf sahibi / lisans (temsili fotoğraflarda zorunlu)
+  photoIllustrative: boolean("photo_illustrative").default(false).notNull(), // aracın kendisi değil, temsili fotoğraf
   sourceUrl: text("source_url"),
   specVerified: boolean("spec_verified").default(false).notNull(),
   available: boolean("available").default(true).notNull(),

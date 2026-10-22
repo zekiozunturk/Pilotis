@@ -13,7 +13,7 @@ export default async function Fleet() {
   return (
     <>
       <div className="pagehead"><div><h1>Filo</h1><div className="muted">Kaynak: <a href={`${OPERATOR.website}/filo/`} target="_blank" rel="noreferrer">yalovapilotaj.com/filo</a> · Araç sayısı sabit kodlanmaz.</div></div><DataToolbar entity="filo" reportHref="/analiz/romorkor" /></div>
-      <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>AK-01 · Teknik özellikler doğrulanmadı</b>Römorkörler Römork-1…7 (kısaltma R1…R7) olarak adlandırıldı; sitede yayımlanan 4 römorkör (Yalova 2–5) R1–R4 ile eşleştirildi, R5–R7 için kayıt bilgisi bekleniyor. Çeki gücü, IMO/MMSI ve sertifikalar gelene kadar römorkör karar motoru bu araçları uygunluk hesabına almaz; değerler uydurulmaz.</div></div>
+      <div className="alert warn" style={{ marginBottom: 16 }}><span>⚠</span><div><b>AK-01 · Teknik özellikler doğrulanmadı</b>Römorkörler Römork-1…7 (kısaltma R1…R7) olarak adlandırıldı; sitede yayımlanan 4 römorkör (Yalova 2–5) R1–R4 ile eşleştirildi, R5–R7 için kayıt bilgisi ve gerçek fotoğraf bekleniyor (şimdilik “temsili fotoğraf” etiketli serbest lisanslı görseller). Çeki gücü, IMO/MMSI ve sertifikalar gelene kadar römorkör karar motoru bu araçları uygunluk hesabına almaz; değerler uydurulmaz.</div></div>
       {order.map((t) => {
         const list = assets.filter((a) => a.type === t);
         if (!list.length) return null;
@@ -24,7 +24,7 @@ export default async function Fleet() {
               {list.map((a) => (
                 <div className="item" key={a.id}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {a.photoUrl ? <img src={a.photoUrl} alt={a.name} loading="lazy" /> : <div style={{ height: 150, background: "var(--navy-100)", display: "grid", placeItems: "center", color: "var(--navy-700)", fontSize: 40, fontWeight: 700 }}>{a.code ?? ""}</div>}
+                  {a.photoUrl ? <figure className="ph"><img src={a.photoUrl} alt={a.photoIllustrative ? `${a.name} — temsili römorkör fotoğrafı` : a.name} loading="lazy" />{a.photoIllustrative && <span className="ph-tag">Temsili fotoğraf</span>}{a.photoCredit && <figcaption>{a.photoCredit.replace("Temsili fotoğraf (aracın kendisi değil) · ", "")}</figcaption>}</figure> : <div style={{ height: 150, background: "var(--navy-100)", display: "grid", placeItems: "center", color: "var(--navy-700)", fontSize: 40, fontWeight: 700 }}>{a.code ?? ""}</div>}
                   <div className="b">
                     <div className="n">{a.code && <span className="badge" style={{ marginRight: 6, fontFamily: "var(--mono, monospace)" }}>{a.code}</span>}{a.name}</div>
                     {a.siteName && <div className="muted" style={{ fontSize: 12 }}>Sitedeki adı: {a.siteName}</div>}
@@ -35,7 +35,7 @@ export default async function Fleet() {
                       <span className={`badge ${a.available ? "ok" : "bad"}`}>{a.available ? "Kullanılabilir" : "Kullanım dışı"}</span>
                       <span className={`badge ${a.specVerified ? "ok" : "warn"}`}>{a.specVerified ? "Teknik dosya doğrulandı" : "Teknik dosya bekleniyor"}</span>
                     </div>
-                    {a.sourceUrl && <div style={{ fontSize: 12, marginTop: 6 }}><a href={a.sourceUrl} target="_blank" rel="noreferrer">Kaynak sayfa ↗</a></div>}
+                    {a.sourceUrl && <div style={{ fontSize: 12, marginTop: 6 }}><a href={a.sourceUrl} target="_blank" rel="noreferrer">{a.photoIllustrative ? "Fotoğraf kaynağı ve lisansı ↗" : "Kaynak sayfa ↗"}</a></div>}
                   </div>
                 </div>
               ))}

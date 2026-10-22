@@ -71,7 +71,8 @@ export default async function Saha() {
         <div className="toolbar"><Link className="btn secondary" href="/analiz/personel">Çalışma saatlerim</Link><Link className="btn secondary" href="/planlama/rotasyon">Ekip rotasyonu</Link></div>
       </div>
 
-      <div className={`duty card ${cur?.sh.category === "WORK" ? "on" : ""}`}>
+      <div className={`duty card ${cur?.sh.category === "WORK" ? "on" : ""} ${(cur?.a ?? next?.a)?.photoUrl ? "with-photo" : ""}`}>
+        {(() => { const a = cur?.a ?? next?.a; return a?.photoUrl ? <img className="duty-photo" src={a.photoUrl} alt={a.photoIllustrative ? "Temsili römorkör fotoğrafı" : a.name} /> : null; })()}
         {cur ? <>
           <div className="duty-k">{cur.sh.category === "WORK" ? "Şu an görevdesiniz" : `Şu an: ${CAT[cur.sh.category]}`}</div>
           <div className="duty-v">{cur.a ? `${cur.a.name} (${cur.a.code ?? ""})` : role === "PILOT" ? "Kılavuzluk vardiyası" : "Vardiya"} · {fmtTime(cur.sh.startAt)}–{fmtTime(cur.sh.endAt)}</div>

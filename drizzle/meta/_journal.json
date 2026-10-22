@@ -92,6 +92,13 @@
       "when": 1792675052774,
       "tag": "0012_bildirim_ve_sifre",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792677989224,
+      "tag": "0013_filo_fotograf",
+      "breakpoints": true
     }
   ]
 }

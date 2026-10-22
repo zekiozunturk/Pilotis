@@ -28,19 +28,20 @@ export const OPERATOR = {
 
 /** Kaynak: yalovapilotaj.com/filo — teknik özellikler henüz alınmadı (AK-01).
  *  Römorkör adlandırması (işletme kararı 22.10.2026): Römork-1…7, kısaltma R1…R7; siteName = sitede yayımlanan ad */
+const OWN_PHOTO = "Fotoğraf: Yalova Pilotaj A.Ş. (yalovapilotaj.com)";
 export const FLEET_SEED = [
-  { name: "Römork-1", code: "R1", siteName: "Yalova 2", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00175-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2-2/" },
-  { name: "Römork-2", code: "R2", siteName: "Yalova 3", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yaloova3-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-3/" },
-  { name: "Römork-3", code: "R3", siteName: "Yalova 4", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yalova44444444444444-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-4/" },
-  { name: "Römork-4", code: "R4", siteName: "Yalova 5", type: "TUG", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/yalova5.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-5/" },
-  { name: "Römork-5", code: "R5", siteName: null, type: "TUG", photoUrl: null, sourceUrl: null },
-  { name: "Römork-6", code: "R6", siteName: null, type: "TUG", photoUrl: null, sourceUrl: null },
-  { name: "Römork-7", code: "R7", siteName: null, type: "TUG", photoUrl: null, sourceUrl: null },
-  { name: "Palamar Bot 1", type: "MOORING_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00361-scaled.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/palamar-bot-1/" },
-  { name: "Palamar Bot 2", type: "MOORING_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00373-scaled.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2/" },
-  { name: "Pilot Bot 1", type: "PILOT_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00451-min-min.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/pilot-bot-2/" },
-  { name: "Pilot Bot 2", type: "PILOT_BOAT", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/02/DSC00278-min-scaled.jpg", sourceUrl: "https://www.yalovapilotaj.com/filo/pilot-bot-1/" },
-  { name: "Deniz Yüzeyi Temizleme Teknesi", type: "SURFACE_CLEANING_VESSEL", photoUrl: "https://www.yalovapilotaj.com/wp-content/uploads/2023/03/MY-ECO.png", sourceUrl: "https://www.yalovapilotaj.com/filo/deniz-yuzeyi-temizleme-teknemiz/" },
+  { name: "Römork-1", code: "R1", siteName: "Yalova 2", type: "TUG", photoUrl: "/fleet/r1.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2-2/" },
+  { name: "Römork-2", code: "R2", siteName: "Yalova 3", type: "TUG", photoUrl: "/fleet/r2.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-3/" },
+  { name: "Römork-3", code: "R3", siteName: "Yalova 4", type: "TUG", photoUrl: "/fleet/r3.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-4/" },
+  { name: "Römork-4", code: "R4", siteName: "Yalova 5", type: "TUG", photoUrl: "/fleet/r4.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-5/" },
+  { name: "Römork-5", code: "R5", siteName: null, type: "TUG", photoUrl: "/fleet/r5.jpg", photoIllustrative: true, photoCredit: "Temsili fotoğraf (aracın kendisi değil) · Marc Ryckaert, CC BY-SA 4.0, Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Union_Panda_tugboat_R05.jpg" },
+  { name: "Römork-6", code: "R6", siteName: null, type: "TUG", photoUrl: "/fleet/r6.jpg", photoIllustrative: true, photoCredit: "Temsili fotoğraf (aracın kendisi değil) · Marc Ryckaert, CC BY-SA 4.0, Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Multratug_11_tugboat_R01.jpg" },
+  { name: "Römork-7", code: "R7", siteName: null, type: "TUG", photoUrl: "/fleet/r7.jpg", photoIllustrative: true, photoCredit: "Temsili fotoğraf (aracın kendisi değil) · Marc Ryckaert, CC BY 4.0, Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Lieven_Gevaert_tugboat_R01.jpg" },
+  { name: "Palamar Bot 1", type: "MOORING_BOAT", photoUrl: "/fleet/palamar-1.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/palamar-bot-1/" },
+  { name: "Palamar Bot 2", type: "MOORING_BOAT", photoUrl: "/fleet/palamar-2.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/yalova-2/" },
+  { name: "Pilot Bot 1", type: "PILOT_BOAT", photoUrl: "/fleet/pilot-1.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/pilot-bot-2/" },
+  { name: "Pilot Bot 2", type: "PILOT_BOAT", photoUrl: "/fleet/pilot-2.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/pilot-bot-1/" },
+  { name: "Deniz Yüzeyi Temizleme Teknesi", type: "SURFACE_CLEANING_VESSEL", photoUrl: "/fleet/temizlik.jpg", photoCredit: OWN_PHOTO, sourceUrl: "https://www.yalovapilotaj.com/filo/deniz-yuzeyi-temizleme-teknemiz/" },
 ] as const;
 
 type SK = "PILOTAGE" | "TOWAGE" | "MOORING" | "UNMOORING" | "LINE_HANDLING" | "CHARTER" | "SALVAGE_REVIEW" | "SPECIAL" | "STANDBY_TUG";

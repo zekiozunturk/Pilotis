@@ -90,7 +90,7 @@ export default async function Home() {
           </div>) },
         { id: "p-duty", title: "Şu an görevdeki ekipler", node: (
           <div className="card">
-            {duty.length ? <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, display: "grid", gap: 4 }}>{duty.map((d) => <li key={d.a.id} style={{ display: "flex", justifyContent: "space-between" }}><span><b>{d.a.code}</b> · {d.p.rotationTeam ?? "—"}</span><span className="muted">{fmtDT(d.s.endAt)}'e kadar</span></li>)}</ul> : <div className="empty">Şu an görevli römorkör ekibi yok</div>}
+            {duty.length ? <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, display: "grid", gap: 4 }}>{duty.map((d) => <li key={d.a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}>{d.a.photoUrl && <img src={d.a.photoUrl} alt="" width={44} height={30} style={{ objectFit: "cover", borderRadius: 4 }} />}<span><b>{d.a.code}</b> · {d.p.rotationTeam ?? "—"}</span></span><span className="muted">{fmtDT(d.s.endAt)}'e kadar</span></li>)}</ul> : <div className="empty">Şu an görevli römorkör ekibi yok</div>}
             <div style={{ marginTop: 8 }}><Link href="/planlama">Planlama →</Link></div>
           </div>) },
         { id: "p-rules", title: "Kural kataloğu", node: (

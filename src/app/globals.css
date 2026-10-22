@@ -313,3 +313,14 @@ input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--bad); 
 .notif-list .b { grid-column: 2 / 4; font-size: 13px; color: var(--muted); white-space: pre-line; }
 .notif-list .t { font-size: 12px; color: var(--muted); grid-row: 1; grid-column: 3; }
 @media (max-width: 640px) { .notif-list a { grid-template-columns: minmax(0, 1fr); } .notif-list .b, .notif-list .t { grid-column: 1; grid-row: auto; } }
+/* Filo fotoğrafları */
+.fleet .item .ph { position: relative; margin: 0; }
+.fleet .item img { height: 170px; }
+.fleet .item .ph-tag { position: absolute; top: 8px; left: 8px; background: rgba(6, 26, 64, .82); color: #fff; font: 600 11px var(--font); padding: 3px 8px; border-radius: 999px; }
+.fleet .item figcaption { position: absolute; right: 0; bottom: 0; max-width: 100%; background: rgba(0, 0, 0, .55); color: #fff; font-size: 10px; padding: 2px 6px; border-top-left-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Giriş ekranı arka plan fotoğrafı (Yalova Pilotaj — Yalova 3) */
+.auth-brand { background: linear-gradient(160deg, rgba(11, 31, 58, .93) 0%, rgba(16, 44, 82, .86) 55%, rgba(14, 58, 92, .78) 100%), url(/brand/giris-yalova3.jpg) center / cover no-repeat; }
+.duty.with-photo { display: grid; grid-template-columns: minmax(0, 1fr) 220px; column-gap: 16px; }
+.duty.with-photo > :not(.duty-photo) { grid-column: 1; }
+.duty-photo { grid-column: 2; grid-row: 1 / span 4; width: 100%; height: 120px; object-fit: cover; border-radius: 8px; }
+@media (max-width: 640px) { .duty.with-photo { grid-template-columns: 1fr; } .duty-photo { grid-column: 1; grid-row: auto; order: -1; margin-bottom: 8px; } }
