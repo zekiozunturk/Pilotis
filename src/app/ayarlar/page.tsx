@@ -17,7 +17,7 @@ export default async function Settings() {
   const canEdit = ["BUSINESS_MANAGER", "ACCOUNTING", "SYSTEM_ADMIN"].includes(role);
   return (
     <>
-      <div className="pagehead"><div><h1>Ayarlar</h1><div className="muted">İşletme genelinde geçerli tercihler. Her değişiklik gerekçesi ve yapanıyla kaydedilir; kayıtlı hesaplar geriye dönük değişmez.</div></div></div>
+      <div className="pagehead"><div><h1>Ayarlar</h1><div className="muted">İşletme genelinde geçerli tercihler. Her değişiklik gerekçesi ve yapanıyla kaydedilir; kayıtlı hesaplar geriye dönük değişmez.</div></div><a className="btn secondary" href="/ayarlar/tema">🎨 Tema Stüdyosu</a></div>
       <div className="grid g2">
         <div className="card">
           <h2>Döviz çevrim kuru</h2>

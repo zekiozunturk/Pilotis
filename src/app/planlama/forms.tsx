@@ -39,7 +39,7 @@ export function ShiftForm({ people, assets, defaultDay, exLimit, exUsed }: { peo
         <div style={{ gridColumn: "span 2" }}><label>Not</label><input name="note" placeholder="ör. Gece vardiyası, tatbikat…" /></div>
       </div>
       {(ex || needsEx) && (
-        <div className="card" style={{ marginTop: 10, background: "var(--warn-bg)", borderColor: "#f0d9a8" }}>
+        <div className="card" style={{ marginTop: 10, background: "var(--warn-bg)", borderColor: "var(--warn)" }}>
           <h3 style={{ color: "var(--warn)" }}>Acil durum istisnası (R-031)</h3>
           <div style={{ fontSize: 12, marginBottom: 6 }}>Yalnız operasyon/işletme yöneticisi onaylar. Bu ay {exUsed}/{exLimit} kullanıldı; olağan iş yoğunluğu acil durum sayılmaz.</div>
           <input type="hidden" name="withException" value="1" />

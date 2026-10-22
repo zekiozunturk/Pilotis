@@ -105,7 +105,7 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
                 <span className="mono muted" style={{ fontSize: 11 }}>{t.id}</span>
                 <input value={t.name} onChange={(e) => setTug(i, { name: e.target.value })} aria-label={`${t.id} adı`} />
                 <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-                  {(["DAY", "NIGHT"] as TugMode[]).map((md) => <button key={md} type="button" onClick={() => setTug(i, { mode: md })} style={{ border: 0, padding: "6px 10px", fontSize: 12, cursor: "pointer", background: t.mode === md ? (md === "DAY" ? "var(--navy-700)" : "#2a2f7a") : "transparent", color: t.mode === md ? "#fff" : "inherit" }}>{md === "DAY" ? "☀ Gündüz" : "☾ Gece"}</button>)}
+                  {(["DAY", "NIGHT"] as TugMode[]).map((md) => <button key={md} type="button" onClick={() => setTug(i, { mode: md })} style={{ border: 0, padding: "6px 10px", fontSize: 12, cursor: "pointer", background: t.mode === md ? (md === "DAY" ? "var(--navy-700)" : "var(--plan-night)") : "transparent", color: t.mode === md ? "var(--btn-fg)" : "inherit" }}>{md === "DAY" ? "☀ Gündüz" : "☾ Gece"}</button>)}
                 </div>
                 <button type="button" className="btn secondary" style={{ padding: "4px 10px" }} disabled={m.tugs.length <= 1} onClick={() => setM((x) => ({ ...x, tugs: x.tugs.filter((_, j) => j !== i) }))} aria-label={`${t.name} çıkar`}>✕</button>
               </div>
@@ -159,7 +159,7 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
                   const max = Math.max(1, ...sim.coverage.hours.map((x) => Math.max(x.max, x.expected)));
                   const short = c.min < c.expected;
                   return <div key={c.hour} title={`${String(c.hour).padStart(2, "0")}:00 — en az ${c.min}, en çok ${c.max}, beklenen ${c.expected}`} style={{ position: "relative", height: "100%", display: "flex", alignItems: "flex-end" }}>
-                    <div style={{ width: "100%", height: `${(c.min / max) * 100}%`, background: short ? "var(--bad)" : c.hour >= 6 && c.hour < 20 ? "var(--navy-700)" : "#2a2f7a", borderRadius: "3px 3px 0 0" }} />
+                    <div style={{ width: "100%", height: `${(c.min / max) * 100}%`, background: short ? "var(--bad)" : c.hour >= 6 && c.hour < 20 ? "var(--navy-700)" : "var(--plan-night)", borderRadius: "3px 3px 0 0" }} />
                     <div style={{ position: "absolute", left: 0, right: 0, bottom: `${(c.expected / max) * 100}%`, borderTop: "2px dashed var(--orange)" }} />
                   </div>;
                 })}
@@ -201,11 +201,11 @@ export function RotationLab({ initial, savedAt, canSave, canApply, todayMs, next
           <h3>Rotasyon takvimi — 4 hafta</h3>
           <div className="tablewrap">
             <table style={{ fontSize: 11, borderCollapse: "separate", borderSpacing: 1, minWidth: 900 }}>
-              <thead><tr><th style={{ minWidth: 170 }}>Ekip</th>{days.map((d) => { const x = new Date(d + TZ); const dow = (x.getUTCDay() + 6) % 7; return <th key={d} style={{ padding: 2, textAlign: "center", fontWeight: 600, background: d <= todayMs && todayMs < d + DAY ? "var(--orange)" : undefined, color: d <= todayMs && todayMs < d + DAY ? "#fff" : undefined }}>{DOW[dow]}<br />{x.getUTCDate()}</th>; })}</tr></thead>
+              <thead><tr><th style={{ minWidth: 170 }}>Ekip</th>{days.map((d) => { const x = new Date(d + TZ); const dow = (x.getUTCDay() + 6) % 7; return <th key={d} style={{ padding: 2, textAlign: "center", fontWeight: 600, background: d <= todayMs && todayMs < d + DAY ? "var(--orange)" : undefined, color: d <= todayMs && todayMs < d + DAY ? "var(--accent-fg, #fff)" : undefined }}>{DOW[dow]}<br />{x.getUTCDate()}</th>; })}</tr></thead>
               <tbody>{sim.teams.map((t) => (
                 <tr key={t.key}>
                   <td style={{ whiteSpace: "nowrap" }}><b>{t.tugName}</b> · {t.letter}</td>
-                  {days.map((d) => { const md = teamDuty(dm, t, Math.round((d - anchor) / DAY)); return <td key={d} title={md ? (md === "DAY" ? `Gündüz ${dm.day.start} +${dm.day.hours} sa` : `Gece ${dm.night.start} +${dm.night.hours} sa`) : "İzin"} style={{ padding: 0, height: 18, background: md === "DAY" ? "var(--navy-700)" : md === "NIGHT" ? "#2a2f7a" : "var(--bg)", color: "#fff", textAlign: "center" }}>{md === "NIGHT" ? "☾" : ""}</td>; })}
+                  {days.map((d) => { const md = teamDuty(dm, t, Math.round((d - anchor) / DAY)); return <td key={d} title={md ? (md === "DAY" ? `Gündüz ${dm.day.start} +${dm.day.hours} sa` : `Gece ${dm.night.start} +${dm.night.hours} sa`) : "İzin"} style={{ padding: 0, height: 18, background: md === "DAY" ? "var(--navy-700)" : md === "NIGHT" ? "var(--plan-night)" : "var(--bg)", color: "#fff", textAlign: "center" }}>{md === "NIGHT" ? "☾" : ""}</td>; })}
                 </tr>
               ))}</tbody>
             </table>

@@ -8,6 +8,7 @@ import { ExportButton } from "../export-button";
 import type { SP } from "@/lib/analytics/load";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Analiz — ekip ve vardiya" };
 
 export default async function Teams({ searchParams }: { searchParams: Promise<SP> }) {
   const a = await analysis(searchParams);

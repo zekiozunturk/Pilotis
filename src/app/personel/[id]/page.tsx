@@ -32,7 +32,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     .where(and(eq(s.shifts.personnelId, p.id), gte(s.shifts.endAt, new Date(from)))).orderBy(desc(s.shifts.startAt));
   const asset = p.homeAssetId ? (await db.select().from(s.fleetAssets).where(eq(s.fleetAssets.id, p.homeAssetId)))[0] : null;
   const pct = (ms: number) => Math.max(0, Math.min(100, ((ms - from) / (to - from)) * 100));
-  const COLORS: Record<string, string> = { WORK: "var(--navy-700)", STANDBY: "#c98a00", TRAINING: "#0f7c7a", LEAVE: "#9aa3b5" };
+  const COLORS: Record<string, string> = { WORK: "var(--navy-700)", STANDBY: "var(--plan-training)", TRAINING: "var(--plan-standby)", LEAVE: "var(--plan-leave)" };
 
   return (
     <>
@@ -54,8 +54,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       <div className="card" style={{ marginBottom: 16 }}>
         <h2>14 günlük çizelge</h2>
         <div style={{ position: "relative", height: 46, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface-2)" }}>
-          {[...Array(14)].map((_, i) => <div key={i} style={{ position: "absolute", left: `${(i / 14) * 100}%`, top: 0, bottom: 0, borderLeft: i ? "1px solid #e3e7ef" : "none", fontSize: 9.5, color: "var(--muted)", paddingLeft: 3 }}>{ymd(from + i * DAY).slice(8)}.{ymd(from + i * DAY).slice(5, 7)}</div>)}
-          {[...Array(15)].map((_, i) => { const ns = from + (i - 1) * DAY + 20 * 3600_000; return <div key={`n${i}`} style={{ position: "absolute", left: `${pct(ns)}%`, width: `${pct(ns + 10 * 3600_000) - pct(ns)}%`, top: 14, bottom: 0, background: "repeating-linear-gradient(135deg,#e6e9f3 0 3px,transparent 3px 6px)" }} />; })}
+          {[...Array(14)].map((_, i) => <div key={i} style={{ position: "absolute", left: `${(i / 14) * 100}%`, top: 0, bottom: 0, borderLeft: i ? "1px solid var(--plan-bg-2)" : "none", fontSize: 9.5, color: "var(--muted)", paddingLeft: 3 }}>{ymd(from + i * DAY).slice(8)}.{ymd(from + i * DAY).slice(5, 7)}</div>)}
+          {[...Array(15)].map((_, i) => { const ns = from + (i - 1) * DAY + 20 * 3600_000; return <div key={`n${i}`} style={{ position: "absolute", left: `${pct(ns)}%`, width: `${pct(ns + 10 * 3600_000) - pct(ns)}%`, top: 14, bottom: 0, background: "repeating-linear-gradient(135deg,var(--plan-line) 0 3px,transparent 3px 6px)" }} />; })}
           {ivs.filter((x) => x.end > from && x.start < to).map((x, i) => <div key={i} title={`${x.label} ${ymd(x.start)} ${tm(x.start)}–${tm(x.end)}`} style={{ position: "absolute", left: `${pct(x.start)}%`, width: `${Math.max(0.3, pct(x.end) - pct(x.start))}%`, top: 18, height: 18, borderRadius: 3, background: COLORS[x.category] }} />)}
           {ev.violations.filter((v) => v.severity === "ERROR" && v.windowStart).map((v, i) => <div key={`v${i}`} title={v.message} style={{ position: "absolute", left: `${pct(v.windowStart!)}%`, width: `${Math.max(0.4, pct(v.windowEnd!) - pct(v.windowStart!))}%`, bottom: 2, height: 4, background: "var(--bad)" }} />)}
           <div style={{ position: "absolute", left: `${pct(Date.now())}%`, top: 0, bottom: 0, width: 2, background: "var(--orange)" }} />

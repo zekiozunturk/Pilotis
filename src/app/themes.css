@@ -1,0 +1,224 @@
+/*
+ * PILOTIS — 10 tema. Her tema yüzey, tipografi, menü, kart, tablo, grafik ve harita belirteçlerini bütünüyle tanımlar.
+ * Durum renkleri (iyi/uyarı/ciddi/kritik) her temada aynı ton ailesinde kalır; anlam temayla değişmez ve
+ * kritik uyarılar her zaman simge + başlık + açıklamayla gösterilir.
+ * Seçenekler <html> üzerindeki data-* öznitelikleriyle uygulanır: data-theme, data-mode, data-density, data-radius,
+ * data-font, data-side, data-motion, data-touch, data-chart, data-map, data-perf.
+ */
+
+/* ── Grafik paletleri (dataviz referansı; açık/koyu ayrı seçilmiş ve doğrulanmış) ── */
+:root[data-mode="dark"] {
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+  --seq-100: #104281; --seq-200: #184f95; --seq-300: #1c5cab; --seq-400: #256abf; --seq-500: #2a78d6; --seq-600: #5598e7; --seq-700: #86b6ef;
+  color-scheme: dark;
+}
+:root[data-chart="contrast"]:not([data-mode="dark"]) {
+  --series-1: #1c5cab; --series-2: #b8461b; --series-3: #0f7a54; --series-4: #8f5f00; --series-5: #b03a66; --series-6: #006400; --series-7: #4a3aa7; --series-8: #b42d2c;
+}
+
+/* ═════════ 1 · Maritime Command — lacivert, turkuaz, beyaz (kurumsal) ═════════ */
+:root[data-theme="maritime"] {
+  --navy-900: #061a40; --navy-800: #0b2d6b; --navy-700: #0e6f8a; --navy-100: #e3f2f5; --link: #0b5f78;
+  --bg: #f1f5f9; --surface: #ffffff; --surface-2: #f6f9fb; --text: #0f1b33; --muted: #566482; --border: #d9e2ec;
+  --side-bg: linear-gradient(180deg, #061a40 0%, #082a5a 100%); --side-solid: #061a40; --side-fg: #d3e2f2; --side-muted: #79a8c8; --side-active-bg: rgba(20, 184, 200, 0.18);
+  --grid: #e3e9f1; --shadow: 0 1px 2px rgba(6, 26, 64, 0.06);
+}
+:root[data-theme="maritime"][data-mode="dark"] {
+  --navy-800: #2bb3c9; --navy-700: #4cc6d9; --navy-100: #10324a; --navy-900: #04101f; --link: #6fd3e3; --heading: #9fdde8; --btn-fg: #04101f;
+  --bg: #071226; --surface: #0f1d36; --surface-2: #132442; --text: #e3edf8; --muted: #93a7c4; --border: #22385c; --input-bg: #0b182e; --row-hover: #142a4b;
+  --side-bg: #040c1a; --side-active-bg: #12345a; --grey-bg: #1d2f4d; --grey-fg: #c3d0e4; --grid: #1f3254; --focus: #4cc6d9;
+  --ok: #4ccf8f; --ok-bg: #0f3324; --warn: #f2b94b; --warn-bg: #3a2a07; --bad: #ff7a6b; --bad-bg: #431612; --info: #7cc4ff; --info-bg: #0f2a49; --orange-soft: #3d1d10;
+  --plan-bg: #0d1a31; --plan-bg-2: #12223d; --plan-line: #1d3050; --plan-night-bg: #0a1426; --plan-today: #14284a; --plan-ghost: #3a4d6e;
+  --map-water: #0b2546; --map-land: #182a20; --map-line: #3f6c99; --map-label: #b8c9e3;
+}
+
+/* ═════════ 2 · Arctic Light — açık gri, buz mavisi, beyaz; ferah ═════════ */
+:root[data-theme="arctic"] {
+  --navy-900: #1d3b57; --navy-800: #2f6f9f; --navy-700: #3b82b8; --navy-100: #e8f2fa; --link: #2a6a9a; --heading: #2a4a66;
+  --bg: #f5f8fb; --surface: #ffffff; --surface-2: #f9fbfd; --text: #1c2a39; --muted: #56697d; --border: #e3eaf1;
+  --side-bg: #eef4f9; --side-fg: #2b4157; --side-muted: #7f95ab; --side-hover: #e1ebf4; --side-active-bg: #ffffff; --side-active-fg: #1d3b57; --side-border: #dfe8f0;
+  --topbar-bg: rgba(255,255,255,0.9); --row-hover: #f4f8fc; --grey-bg: #eef3f7; --grey-fg: #4f6276;
+  --radius: 14px; --btn-radius: 10px; --cell-py: 11px; --h2-transform: none; --h2-spacing: 0; --shadow: 0 1px 3px rgba(29, 59, 87, 0.05);
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ═════════ 3 · Midnight Operations — koyu lacivert, düşük parlaklık; gece operasyonu ═════════ */
+:root[data-theme="midnight"] {
+  --navy-900: #050a14; --navy-800: #5aa9e6; --navy-700: #7dbbea; --navy-100: #14243b; --link: #8cc4f0; --heading: #a8c8e8; --btn-fg: #06101f;
+  --orange: #e0874f; --orange-soft: #2e1b10; --accent-fg: #0b0f16;
+  --bg: #0a0f1a; --surface: #111827; --surface-2: #151e30; --text: #d5deeb; --muted: #8796ad; --border: #222d42; --input-bg: #0d1422; --row-hover: #172235;
+  --side-bg: #060a12; --side-fg: #aebbd0; --side-muted: #5e6f88; --side-hover: rgba(255,255,255,0.04); --side-active-bg: #142238; --side-active-fg: #e6eef8; --side-border: #141c2b;
+  --logo-bg: #e9eef6; --topbar-bg: #0d1320; --grey-bg: #1c2638; --grey-fg: #b4c0d3; --grid: #1e293d; --focus: #7dbbea;
+  --ok: #46c48a; --ok-bg: #0e2b20; --warn: #e6b04a; --warn-bg: #2e2208; --bad: #f2776a; --bad-bg: #3a1411; --info: #7fb8ee; --info-bg: #11253d;
+  --plan-bg: #0e1524; --plan-bg-2: #121b2d; --plan-line: #1b2539; --plan-night-bg: #0b111e; --plan-today: #16223a; --plan-ghost: #34425c;
+  --map-water: #0a1a33; --map-land: #121d18; --map-line: #36557d; --map-label: #9fb2cf;
+  --h2-transform: none; --h2-spacing: 0.02em;
+}
+
+/* ═════════ 4 · Black & Copper — siyah, antrasit, bakır; yönetici kokpiti ═════════ */
+:root[data-theme="copper"] {
+  --navy-900: #0b0b0c; --navy-800: #c27a4a; --navy-700: #d89262; --navy-100: #2a1f18; --link: #e0a173; --heading: #e8c3a2; --btn-fg: #140c07;
+  --orange: #c27a4a; --orange-soft: #2c1d13; --accent-fg: #140c07;
+  --bg: #0e0e0f; --surface: #18181a; --surface-2: #1e1e21; --text: #ece7e1; --muted: #a39b91; --border: #2c2b2e; --input-bg: #141416; --row-hover: #222225;
+  --side-bg: #0a0a0b; --side-fg: #cfc6bb; --side-muted: #7d7469; --side-hover: rgba(194,122,74,0.08); --side-active-bg: #241a13; --side-active-fg: #f3d9c2; --side-border: #1c1b1d;
+  --logo-bg: #f2ede7; --topbar-bg: #121213; --grey-bg: #26252a; --grey-fg: #c8c0b6; --grid: #2a292c; --focus: #d89262;
+  --ok: #5cc08c; --ok-bg: #12291d; --warn: #e3b25a; --warn-bg: #2d220c; --bad: #ef7a6c; --bad-bg: #371613; --info: #8db8e8; --info-bg: #162436;
+  --heading-font: "Cormorant Garamond", Georgia, "Times New Roman", serif; --h2-transform: uppercase; --h2-spacing: 0.14em;
+  --radius: 6px; --btn-radius: 4px; --shadow: 0 1px 0 rgba(194,122,74,0.12) inset;
+  --plan-bg: #151517; --plan-bg-2: #1a1a1d; --plan-line: #29282b; --plan-night-bg: #121214; --plan-today: #221a14; --plan-ghost: #4a443f;
+  --map-water: #141c24; --map-land: #1c1915; --map-line: #6b5240; --map-label: #c9b7a4;
+}
+
+/* ═════════ 5 · Nordic Minimal — sıcak beyaz, taş grisi, koyu yeşil ═════════ */
+:root[data-theme="nordic"] {
+  --navy-900: #183a2c; --navy-800: #1f4d3a; --navy-700: #2d6a50; --navy-100: #e9f0eb; --link: #2a6249; --heading: #24473a;
+  --orange: #b8643a; --orange-soft: #f6e9df;
+  --bg: #f6f3ee; --surface: #fdfcf9; --surface-2: #f8f5f0; --text: #24221f; --muted: #6a655e; --border: #e6e0d6;
+  --side-bg: #efebe3; --side-fg: #3c3934; --side-muted: #8a857c; --side-hover: #e6e1d7; --side-active-bg: #fdfcf9; --side-active-fg: #1f4d3a; --side-border: #e2dccf;
+  --topbar-bg: #fbf9f5; --row-hover: #f6f2ea; --grey-bg: #ece7de; --grey-fg: #5b564f; --input-bg: #fffefb;
+  --radius: 12px; --btn-radius: 999px; --h2-transform: none; --h2-spacing: 0; --cell-py: 10px;
+  --font: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --plan-day: #2d6a50; --plan-night: #2f3a4a;
+}
+:root[data-theme="nordic"][data-mode="dark"] {
+  --navy-800: #6fbf97; --navy-700: #8fd0ae; --navy-100: #1e2d26; --link: #9ad6b6; --heading: #b9dcc8; --btn-fg: #0f1a14;
+  --bg: #141614; --surface: #1c1f1d; --surface-2: #212522; --text: #e7e4dd; --muted: #a29c92; --border: #2f3430; --input-bg: #181b19; --row-hover: #242925;
+  --side-bg: #111311; --side-fg: #d3cfc6; --side-muted: #7f7a71; --side-hover: rgba(255,255,255,0.04); --side-active-bg: #1f2a23; --side-active-fg: #e6f1ea; --side-border: #222622;
+  --logo-bg: #f3f0ea; --topbar-bg: #171a18; --grey-bg: #2a2e2b; --grey-fg: #cfcac1; --grid: #2b302c; --focus: #8fd0ae;
+  --ok: #67cc95; --ok-bg: #12291c; --warn: #e3b25a; --warn-bg: #2d230c; --bad: #ef7c6d; --bad-bg: #351714; --info: #8ab8e6; --info-bg: #152535; --orange-soft: #2e1e14;
+  --plan-bg: #181b19; --plan-bg-2: #1d201e; --plan-line: #2a2e2b; --plan-night-bg: #151816; --plan-today: #202a24; --plan-ghost: #47504a;
+  --map-water: #12202a; --map-land: #1b211b; --map-line: #4b6a5c; --map-label: #c4cfc6;
+}
+
+/* ═════════ 6 · Industrial Steel — çelik grisi, koyu mavi, amber; teknik ═════════ */
+:root[data-theme="steel"] {
+  --navy-900: #14243a; --navy-800: #1d3557; --navy-700: #2b4c7a; --navy-100: #e3e8ef; --link: #24456f; --heading: #1d3557;
+  --orange: #f2a900; --orange-soft: #fff3d1; --accent-fg: #1b1300;
+  --bg: #e7eaee; --surface: #f7f8f9; --surface-2: #eef0f3; --text: #1b2430; --muted: #5c6776; --border: #cdd3db;
+  --side-bg: #1b2430; --side-fg: #c9d1db; --side-muted: #7f8b99; --side-hover: rgba(242,169,0,0.08); --side-active-bg: #263243; --side-active-fg: #ffffff; --side-border: #2a3443;
+  --row-hover: #edf0f4; --grey-bg: #e2e6eb; --grey-fg: #48525f;
+  --radius: 3px; --btn-radius: 2px; --cell-py: 7px; --h2-transform: uppercase; --h2-spacing: 0.12em;
+  --heading-font: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+}
+:root[data-theme="steel"][data-mode="dark"] {
+  --navy-800: #5d8fd6; --navy-700: #7aa4e0; --navy-100: #1e2a3b; --link: #8db3e8; --heading: #c3d3ea; --btn-fg: #0b1320;
+  --bg: #12161c; --surface: #1d232b; --surface-2: #222a33; --text: #dfe5ec; --muted: #94a0ae; --border: #313a46; --input-bg: #171c23; --row-hover: #242c36;
+  --side-bg: #0e1217; --side-active-bg: #212a35; --grey-bg: #2a323d; --grey-fg: #c4ccd6; --grid: #2c3540; --focus: #f2a900; --shadow: none; --logo-bg: #eef1f4; --topbar-bg: #171c22;
+  --ok: #57c48a; --ok-bg: #11291d; --warn: #f2b84b; --warn-bg: #2f240a; --bad: #f07a6d; --bad-bg: #3a1613; --info: #85b6ee; --info-bg: #152639; --orange-soft: #2f2408;
+  --plan-bg: #181d24; --plan-bg-2: #1d232b; --plan-line: #2b333e; --plan-night-bg: #151a20; --plan-today: #232c38; --plan-ghost: #46505d;
+  --map-water: #132233; --map-land: #1b1f1b; --map-line: #556a84; --map-label: #c2ccd8;
+}
+
+/* ═════════ 7 · Ocean Glass — deniz mavisi, katmanlı yüzeyler, ölçülü cam etkisi ═════════ */
+:root[data-theme="ocean"] {
+  --navy-900: #003a52; --navy-800: #006d8f; --navy-700: #0089ad; --navy-100: #dff3f8; --link: #00708f; --heading: #00506a;
+  --orange: #ff7a45; --orange-soft: #ffece3;
+  --bg: linear-gradient(160deg, #e6f6fb 0%, #d2ecf6 45%, #c3e3f1 100%) fixed; --surface: rgba(255,255,255,0.72); --surface-2: rgba(255,255,255,0.55);
+  --text: #0e2a36; --muted: #4c6a77; --border: rgba(0,109,143,0.16); --input-bg: rgba(255,255,255,0.85); --row-hover: rgba(0,137,173,0.06);
+  --side-bg: linear-gradient(180deg, rgba(0,58,82,0.94), rgba(0,90,120,0.92)); --side-solid: #004a68; --side-fg: #d7f0f7; --side-muted: #84bfd2; --side-active-bg: rgba(255,255,255,0.14); --side-border: rgba(255,255,255,0.12);
+  --topbar-bg: rgba(255,255,255,0.6); --grey-bg: rgba(14,42,54,0.07); --grey-fg: #3c5866;
+  --glass: blur(14px) saturate(1.2); --shadow: 0 8px 24px rgba(0,58,82,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+  --radius: 16px; --btn-radius: 12px; --h2-transform: none; --h2-spacing: 0;
+}
+:root[data-theme="ocean"] body { background: var(--bg); }
+:root[data-theme="ocean"][data-mode="dark"] {
+  --navy-800: #38bdf8; --navy-700: #67cdf9; --navy-100: rgba(56,189,248,0.12); --link: #7dd3fc; --heading: #a5e3fb; --btn-fg: #032130;
+  --bg: linear-gradient(160deg, #031821 0%, #052a3a 50%, #063448 100%) fixed; --surface: rgba(10,40,55,0.66); --surface-2: rgba(10,40,55,0.5);
+  --text: #dff3fb; --muted: #8fb5c4; --border: rgba(125,211,252,0.14); --input-bg: rgba(3,24,33,0.7); --row-hover: rgba(125,211,252,0.06);
+  --side-bg: rgba(2,18,26,0.9); --topbar-bg: rgba(4,26,36,0.6); --grey-bg: rgba(255,255,255,0.07); --grey-fg: #c3dbe5; --grid: rgba(125,211,252,0.12); --focus: #7dd3fc; --logo-bg: #effaff;
+  --ok: #4fd39a; --ok-bg: rgba(16,80,52,0.5); --warn: #f6c35b; --warn-bg: rgba(80,58,10,0.5); --bad: #ff8a7a; --bad-bg: rgba(90,24,18,0.55); --info: #7dd3fc; --info-bg: rgba(10,60,90,0.5); --orange-soft: rgba(90,40,20,0.5);
+  --plan-bg: rgba(5,30,42,0.6); --plan-bg-2: rgba(8,38,52,0.6); --plan-line: rgba(125,211,252,0.12); --plan-night-bg: rgba(3,20,30,0.7); --plan-today: rgba(56,189,248,0.12); --plan-ghost: #3d5f6e;
+  --map-water: #06304a; --map-land: #10261f; --map-line: #3d7fa3; --map-label: #b9dcea;
+}
+
+/* ═════════ 8 · Radar Control — koyu zemin, yeşil ve camgöbeği; canlı takip ═════════ */
+:root[data-theme="radar"] {
+  --navy-900: #020a07; --navy-800: #2bd67b; --navy-700: #22d3ee; --navy-100: #0b2a20; --link: #4fe0f2; --heading: #6ff0a6; --btn-fg: #02140c;
+  --orange: #22d3ee; --orange-soft: #072a30; --accent-fg: #02140c;
+  --bg: #04110d; --surface: #08201a; --surface-2: #0b2a21; --text: #d3f5e4; --muted: #7fae98; --border: #164536; --input-bg: #061811; --row-hover: #0d3026;
+  --side-bg: #020c08; --side-fg: #a9dcc3; --side-muted: #4f8a70; --side-hover: rgba(43,214,123,0.07); --side-active-bg: #0c3022; --side-active-fg: #d8ffe9; --side-border: #0f2c22;
+  --logo-bg: #e6fff2; --topbar-bg: #061611; --grey-bg: #10362b; --grey-fg: #b4dccb; --grid: #12392d; --focus: #22d3ee;
+  --ok: #3ddc84; --ok-bg: #0b3020; --warn: #f3c34f; --warn-bg: #2d2509; --bad: #ff7468; --bad-bg: #3a1512; --info: #4fe0f2; --info-bg: #08313a;
+  --heading-font: var(--mono); --h2-transform: uppercase; --h2-spacing: 0.16em; --radius: 4px; --btn-radius: 3px;
+  --shadow: 0 0 0 1px rgba(43,214,123,0.06), 0 0 18px rgba(43,214,123,0.04);
+  --plan-day: #2bd67b; --plan-night: #22a7c4; --plan-bg: #071c16; --plan-bg-2: #09241c; --plan-line: #123b2f; --plan-night-bg: #051510; --plan-today: #0d3326; --plan-ghost: #2e5c4b;
+  --map-water: #031a20; --map-land: #07160f; --map-line: #22d3ee; --map-label: #8ff0c0;
+}
+:root[data-theme="radar"] body { background-image: radial-gradient(circle at 80% -20%, rgba(43,214,123,0.06), transparent 50%); }
+
+/* ═════════ 9 · Executive Ivory — fildişi, koyu kahve, bronz; finans ve raporlama ═════════ */
+:root[data-theme="ivory"] {
+  --navy-900: #2a1d14; --navy-800: #3b2a1e; --navy-700: #6a4a2f; --navy-100: #f1e7d8; --link: #7a5326; --heading: #3b2a1e;
+  --orange: #a8742c; --orange-soft: #f5ead7;
+  --bg: #f7f2e7; --surface: #fffdf8; --surface-2: #faf5ea; --text: #2b2118; --muted: #7a6a58; --border: #e7dccb;
+  --side-bg: #2b1f16; --side-fg: #e8dccb; --side-muted: #a8927a; --side-hover: rgba(168,116,44,0.1); --side-active-bg: #3d2c1f; --side-active-fg: #fff4e3; --side-border: #3a2b1f;
+  --topbar-bg: #fffdf8; --row-hover: #faf4e8; --grey-bg: #f0e8da; --grey-fg: #5e4d3d; --input-bg: #fffefa;
+  --heading-font: "Cormorant Garamond", Georgia, "Times New Roman", serif; --h2-transform: none; --h2-spacing: 0.01em;
+  --radius: 8px; --btn-radius: 6px; --cell-py: 10px; --shadow: 0 1px 2px rgba(59,42,30,0.06);
+  --plan-day: #6a4a2f; --plan-night: #2f2a45;
+}
+
+/* ═════════ 10 · High Contrast — güçlü kontrast, belirgin sınırlar, büyük kontroller ═════════ */
+:root[data-theme="contrast"] {
+  --navy-900: #000000; --navy-800: #0a3a8c; --navy-700: #00307a; --navy-100: #e8eefb; --link: #0033a0; --heading: #000000;
+  --orange: #b33c00; --orange-soft: #ffe8d6;
+  --bg: #ffffff; --surface: #ffffff; --surface-2: #f2f2f2; --text: #000000; --muted: #2b2b2b; --border: #000000;
+  --side-bg: #000000; --side-fg: #ffffff; --side-muted: #e6e6e6; --side-hover: #222222; --side-active-bg: #ffffff; --side-active-fg: #000000; --side-border: #ffffff;
+  --row-hover: #fff6c2; --grey-bg: #e6e6e6; --grey-fg: #000000; --focus: #b33c00;
+  --ok: #005c2e; --ok-bg: #d9f5e5; --warn: #6b3d00; --warn-bg: #ffe9b8; --bad: #9e0000; --bad-bg: #ffdcdc; --info: #00307a; --info-bg: #dde8ff;
+  --radius: 4px; --btn-radius: 4px; --base-size: 15.5px; --ctl-h: 44px; --cell-py: 11px; --h2-transform: none; --h2-spacing: 0;
+  --grid: #8c8c8c; --plan-ghost: #6b6b6b; --plan-line: #8c8c8c;
+}
+:root[data-theme="contrast"] .card, :root[data-theme="contrast"] .tablewrap, :root[data-theme="contrast"] .tile, :root[data-theme="contrast"] input, :root[data-theme="contrast"] select, :root[data-theme="contrast"] textarea { border-width: 2px; }
+:root[data-theme="contrast"] a { text-decoration: underline; }
+:root[data-theme="contrast"] .alert { border: 2px solid currentColor; }
+:root[data-theme="contrast"][data-mode="dark"] {
+  --navy-800: #ffd400; --navy-700: #ffe55c; --navy-100: #2b2600; --link: #ffe55c; --heading: #ffffff; --btn-fg: #000000;
+  --orange: #ff9d4d; --orange-soft: #3a1d00; --accent-fg: #000;
+  --bg: #000000; --surface: #000000; --surface-2: #111111; --text: #ffffff; --muted: #e6e6e6; --border: #ffffff; --input-bg: #000000; --row-hover: #262200;
+  --side-bg: #000000; --side-active-bg: #ffd400; --side-active-fg: #000; --grey-bg: #222222; --grey-fg: #ffffff; --grid: #9a9a9a; --focus: #ffd400; --logo-bg: #ffffff; --topbar-bg: #000;
+  --ok: #5dff9d; --ok-bg: #002b14; --warn: #ffd166; --warn-bg: #2e2200; --bad: #ff8c8c; --bad-bg: #330000; --info: #8cc4ff; --info-bg: #001d3d;
+  --plan-bg: #0d0d0d; --plan-bg-2: #141414; --plan-night-bg: #050505; --plan-today: #262200;
+  --map-water: #001933; --map-land: #0d0d0d; --map-line: #ffd400; --map-label: #ffffff;
+}
+
+/* ═════════ Kişisel seçenekler (temadan bağımsız katmanlar) ═════════ */
+:root[data-density="comfortable"] { --cell-py: 13px; --cell-px: 12px; }
+:root[data-density="compact"] { --cell-py: 4px; --cell-px: 8px; }
+:root[data-density="compact"] table { font-size: 12.5px; }
+:root[data-radius="sharp"] { --radius: 2px; --btn-radius: 2px; }
+:root[data-radius="soft"] { --radius: 10px; --btn-radius: 8px; }
+:root[data-radius="round"] { --radius: 18px; --btn-radius: 999px; }
+:root[data-font="s"] { --base-size: 13px; }
+:root[data-font="l"] { --base-size: 15.5px; }
+:root[data-font="xl"] { --base-size: 17px; }
+:root[data-font="l"] table, :root[data-font="xl"] table { font-size: 14px; }
+:root[data-side="wide"] { --side-w: 292px; }
+:root[data-side="narrow"] { --side-w: 72px; }
+:root[data-side="narrow"] .side .brand { padding: 10px 8px; }
+:root[data-side="narrow"] .side .group, :root[data-side="narrow"] .side .client, :root[data-side="narrow"] .side nav a .lbl { display: none; }
+:root[data-side="narrow"] .side nav a { justify-content: center; padding: 10px 6px; font-size: 16px; }
+:root[data-touch="1"] { --ctl-h: 46px; }
+:root[data-touch="1"] .side nav a { padding: 12px 12px; }
+:root[data-touch="1"] .btn { padding: 10px 16px; }
+:root[data-touch="1"] input[type="checkbox"], :root[data-touch="1"] input[type="radio"] { width: 22px; height: 22px; }
+:root[data-motion="full"] { --motion-fast: .14s; }
+:root[data-motion="full"] .card, :root[data-motion="full"] .tile { transition: transform .18s ease, box-shadow .18s ease; }
+:root[data-motion="full"] .tile:hover { transform: translateY(-1px); }
+:root[data-motion="none"] *, :root[data-motion="none"] *::before, :root[data-motion="none"] *::after { transition: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="full"]) * { transition: none !important; animation: none !important; } }
+/* Performans modu: cam, gölge, degrade ve efektler kapalı */
+:root[data-perf="1"] { --glass: none; --shadow: none; }
+:root[data-perf="1"] body { background-image: none !important; }
+:root[data-perf="1"][data-theme="ocean"] { --bg: #dcf0f7; --surface: #ffffff; --surface-2: #f1f9fc; --side-bg: #003a52; }
+:root[data-perf="1"][data-theme="ocean"][data-mode="dark"] { --bg: #041e29; --surface: #0b2a3a; --surface-2: #0e3346; --side-bg: #021219; }
+:root[data-perf="1"][data-theme="maritime"] { --side-bg: #061a40; }
+:root[data-perf="1"] * { transition: none !important; animation: none !important; }
+/* Harita görünümü kullanıcı seçimi (temadan bağımsız) */
+:root[data-map="dark"] { --map-water: #0b2546; --map-land: #182a20; --map-line: #3f6c99; --map-label: #b8c9e3; }
+:root[data-map="light"] { --map-water: #d6e6f5; --map-land: #eef0e6; --map-line: #8aa2c0; --map-label: #3b4a63; }
+.side .brand > div { background: var(--logo-bg) !important; }
+
+.side { background-color: var(--side-solid, transparent); }

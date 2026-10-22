@@ -9,6 +9,7 @@ import { PersonPicker } from "../person-picker";
 import type { SP } from "@/lib/analytics/load";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Analiz — personel" };
 
 export default async function PersonnelAnalysis({ searchParams }: { searchParams: Promise<SP> }) {
   const a = await analysis(searchParams);

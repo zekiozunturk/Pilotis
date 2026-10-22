@@ -17,13 +17,13 @@ export function Nav({ external = false }: { external?: boolean }) {
   const groups = external ? [{ title: "Müşteri", items: GROUPS.flatMap((g) => g.items).filter(([h]) => EXTERNAL.includes(h)) }] : GROUPS;
   const isActive = (href: string) => (href === "/" ? path === "/" : href === "/planlama" ? path === "/planlama" : path === href || (href !== "/operasyonlar" && path.startsWith(href)) || (href === "/operasyonlar" && path.startsWith("/operasyonlar/") && path !== "/operasyonlar/yeni") || (href === "/operasyonlar" && path === "/operasyonlar"));
   return (
-    <nav aria-label="Ana menü">
+    <nav aria-label="Ana menü" id="ana-menu">
       {groups.map((g) => (
         <div key={g.title}>
           <div className="group">{g.title}</div>
           {g.items.map(([href, icon, label]) => (
-            <Link key={href} href={href} className={isActive(href) ? "active" : ""}>
-              <span aria-hidden style={{ width: 16, textAlign: "center", opacity: 0.8 }}>{icon}</span>{label}
+            <Link key={href} href={href} className={isActive(href) ? "active" : ""} title={label}>
+              <span aria-hidden style={{ width: 16, textAlign: "center", opacity: 0.8 }}>{icon}</span><span className="lbl">{label}</span>
             </Link>
           ))}
         </div>

@@ -25,6 +25,8 @@ function SvcRow({ name, svc }: { name: string; svc: ServiceTariff }) {
   return <tr><td>{SERVICE_LABELS[name] ?? name}</td><td className="mono">{b?.base}</td><td className="mono">{b?.perBlock ? `+${b.perBlock}` : "—"}</td><td>{svc.gtCap ? svc.gtCap.toLocaleString("tr-TR") : "—"}</td><td style={{ fontSize: 12 }}>{svc.unit === "HOUR" ? "Saat" : "Manevra"}{svc.note ? ` · ${svc.note}` : ""}</td></tr>;
 }
 
+export async function generateMetadata() { return { title: "Tarife sürümü" }; }
+
 export default async function VersionPage({ params }: { params: Promise<{ id: string }> }) {
   await requireInternalPage();
   const { id } = await params;

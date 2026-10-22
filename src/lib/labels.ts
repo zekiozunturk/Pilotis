@@ -12,7 +12,7 @@ export const EVENT_LABELS: Record<string, string> = {
   TASK_ACCEPTED: "Görev kabul edildi", TRANSIT_START: "İntikale başlandı", ARRIVED_SITE: "Sahaya ulaşıldı",
   DECLARATION_CHECKED: "Beyan kontrol edildi", PILOT_BOARDED: "Kılavuz gemiye çıktı", TUG_ALONGSIDE: "Römorkör bordaya geldi",
   MOORING_START: "Palamar başladı", SERVICE_START: "Hizmet başladı", PAUSE_START: "Duraklama başladı", PAUSE_END: "Devam edildi",
-  SERVICE_END: "Hizmet bitti", PILOT_DISEMBARKED: "Kılavuz gemiden indi", INCIDENT: "Olay bildirildi", CANCEL_OR_INCOMPLETE: "Tamamlanamama / iptal",
+  SERVICE_END: "Hizmet bitti", PILOT_DISEMBARKED: "Kılavuz gemiden indi", INCIDENT: "Olay bildirildi", CANCEL_OR_INCOMPLETE: "Tamamlanamama / iptal", WAIT_START: "Bekleme başladı", WAIT_END: "Bekleme bitti", RETURN_START: "Dönüşe başlandı", RETURN_END: "Üsse dönüldü",
 };
 
 export const ROLE_TYPE_LABELS: Record<string, string> = {

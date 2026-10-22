@@ -10,6 +10,7 @@ import { ExportButton } from "../export-button";
 import type { SP } from "@/lib/analytics/load";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Analiz — emniyet ve yorgunluk" };
 
 export default async function Safety({ searchParams }: { searchParams: Promise<SP> }) {
   const a = await analysis(searchParams);

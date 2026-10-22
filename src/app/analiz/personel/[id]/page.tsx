@@ -11,6 +11,7 @@ import { Columns, HBars } from "@/components/charts";
 import type { SP } from "@/lib/analytics/load";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Analiz — personel detayı" };
 const CAT_COLOR: Record<string, string> = { WORK: "var(--series-1)", STANDBY: "var(--series-4)", TRAINING: "var(--series-3)", LEAVE: "var(--border)" };
 const CAT_TR: Record<string, string> = { WORK: "Görev vardiyası", STANDBY: "Hazır bulunma", TRAINING: "Eğitim", LEAVE: "İzin" };
 

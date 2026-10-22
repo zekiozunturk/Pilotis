@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { Fragment } from "react";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Rapor oluşturucu" };
 
 export default async function ReportPage({ searchParams }: { searchParams: Promise<SP> }) {
   const a = await analysis(searchParams);

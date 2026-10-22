@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { ExportButton } from "./export-button";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Analiz — yönetici özeti" };
 
 export default async function Summary({ searchParams }: { searchParams: Promise<SP> }) {
   const a = await analysis(searchParams);

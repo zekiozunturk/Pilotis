@@ -8,6 +8,7 @@ import { Columns } from "@/components/charts";
 import type { SP } from "@/lib/analytics/load";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Analiz — römorkör detayı" };
 const DOWN_TR: Record<string, string> = { PLANNED_MAINTENANCE: "Planlı bakım", BREAKDOWN: "Arıza", CERTIFICATE: "Belge / sörvey", OTHER: "Diğer" };
 
 export default async function TugDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SP> }) {

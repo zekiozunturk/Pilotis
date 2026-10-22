@@ -11,7 +11,7 @@ export const metadata = { title: "Planlama" };
 const DAY = 86_400_000, TZ = 3 * 3600_000;
 const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const hm = (m: number | null) => (m === null ? "—" : `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, "0")}`);
-const COLORS: Record<string, string> = { WORK: "var(--navy-700)", NIGHT: "#2a2f7a", STANDBY: "#c98a00", TRAINING: "#0f7c7a", LEAVE: "#9aa3b5" };
+const COLORS: Record<string, string> = { WORK: "var(--navy-700)", NIGHT: "var(--plan-night)", STANDBY: "var(--plan-training)", TRAINING: "var(--plan-standby)", LEAVE: "var(--plan-leave)" };
 
 function mondayOf(ms: number) { const d = new Date(ms + TZ); d.setUTCHours(0, 0, 0, 0); const dow = (d.getUTCDay() + 6) % 7; return d.getTime() - TZ - dow * DAY; }
 const ymd = (ms: number) => new Date(ms + TZ).toISOString().slice(0, 10);
@@ -67,7 +67,7 @@ export default async function Planning({ searchParams }: { searchParams: Promise
       <div className="card" style={{ marginBottom: 16, padding: 0, overflow: "hidden" }}>
         <div style={{ display: "flex", gap: 14, padding: "10px 16px", fontSize: 12, flexWrap: "wrap", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
           {[["WORK", "Görev (gündüz)"], ["NIGHT", "Görev (gece ağırlıklı)"], ["STANDBY", "Hazır bulunma"], ["TRAINING", "Eğitim"], ["LEAVE", "İzin"]].map(([k, l]) => <span key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span style={{ width: 14, height: 10, borderRadius: 2, background: COLORS[k] }} />{l}</span>)}
-          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span style={{ width: 14, height: 10, background: "repeating-linear-gradient(135deg,#e6e9f3 0 3px,#f6f7fb 3px 6px)", border: "1px solid var(--border)" }} />Gece dilimi</span>
+          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span style={{ width: 14, height: 10, background: "repeating-linear-gradient(135deg,var(--plan-line) 0 3px,var(--plan-bg) 3px 6px)", border: "1px solid var(--border)" }} />Gece dilimi</span>
           <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span style={{ width: 14, height: 4, background: "var(--bad)" }} />İhlal penceresi</span>
           <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span style={{ width: 14, height: 10, border: "2px dashed var(--bad)" }} />İstisnayla kaydedilmiş</span>
           <span className="muted" style={{ marginLeft: "auto" }}><Term n={37}>Hazır bulunma</Term> profil kuralına göre çalışma sayılır (R-029 taslak)</span>
@@ -81,7 +81,7 @@ export default async function Planning({ searchParams }: { searchParams: Promise
             </div>
             {groups.map((g) => (
               <div key={g}>
-                <div style={{ padding: "6px 12px", fontSize: 11.5, fontWeight: 700, color: "var(--navy-800)", background: "#f1f4fa", borderBottom: "1px solid var(--border)" }}>{g}</div>
+                <div style={{ padding: "6px 12px", fontSize: 11.5, fontWeight: 700, color: "var(--navy-800)", background: "var(--plan-today)", borderBottom: "1px solid var(--border)" }}>{g}</div>
                 {board.filter((b) => (b.person.unit ?? "Diğer") === g).map((b) => {
                   const m = b.evaluation.metrics;
                   const errs = b.evaluation.violations.filter((v) => v.severity === "ERROR");
@@ -95,14 +95,14 @@ export default async function Planning({ searchParams }: { searchParams: Promise
                         <span className="muted" style={{ fontSize: 11 }}>{b.person.title} · {prof.code === "STCW_MLC" ? "STCW/MLC" : "İş Kanunu"}</span>
                       </div>
                       <div style={{ position: "relative", height: 40, borderLeft: "1px solid var(--border)" }}>
-                        {[...Array(7)].map((_, i) => <div key={`d${i}`} style={{ position: "absolute", left: `${(i / 7) * 100}%`, top: 0, bottom: 0, borderLeft: i ? "1px solid #eef1f6" : "none" }} />)}
-                        {[...Array(8)].map((_, i) => { const ns = ws + (i - 1) * DAY + 20 * 3600_000, ne = ns + 10 * 3600_000; return <div key={`n${i}`} style={{ position: "absolute", left: `${pct(ns)}%`, width: `${pct(ne) - pct(ns)}%`, top: 0, bottom: 0, background: "repeating-linear-gradient(135deg,#eceff7 0 3px,transparent 3px 6px)" }} />; })}
+                        {[...Array(7)].map((_, i) => <div key={`d${i}`} style={{ position: "absolute", left: `${(i / 7) * 100}%`, top: 0, bottom: 0, borderLeft: i ? "1px solid var(--plan-bg-2)" : "none" }} />)}
+                        {[...Array(8)].map((_, i) => { const ns = ws + (i - 1) * DAY + 20 * 3600_000, ne = ns + 10 * 3600_000; return <div key={`n${i}`} style={{ position: "absolute", left: `${pct(ns)}%`, width: `${pct(ne) - pct(ns)}%`, top: 0, bottom: 0, background: "repeating-linear-gradient(135deg,var(--plan-night-bg) 0 3px,transparent 3px 6px)" }} />; })}
                         {b.intervals.map((iv) => {
                           const nightShare = (() => { let n = 0; for (let t = iv.start; t < iv.end; t += 15 * 60_000) { const h = new Date(t + TZ).getUTCHours(); if (h >= 20 || h < 6) n++; } return n / Math.max(1, (iv.end - iv.start) / (15 * 60_000)); })();
                           const color = iv.category === "WORK" && nightShare > 0.5 ? COLORS.NIGHT : COLORS[iv.category];
                           const l = pct(iv.start), w = Math.max(0.4, pct(iv.end) - l);
                           return <div key={iv.id} title={`${iv.label}${iv.operationRef ? ` · ${iv.operationRef}` : ""} · ${ymd(iv.start)} ${tm(iv.start)} – ${ymd(iv.end)} ${tm(iv.end)}${iv.exception ? " · ACİL DURUM İSTİSNASI" : ""}${iv.status === "PLANNED" ? " · planlı" : ""}`}
-                            style={{ position: "absolute", left: `${l}%`, width: `${w}%`, top: 8, height: 20, borderRadius: 4, background: iv.category === "LEAVE" ? `repeating-linear-gradient(45deg,${color} 0 4px,#c5cad6 4px 8px)` : color, opacity: iv.status === "PLANNED" ? 0.78 : 1, outline: iv.exception ? "2px dashed var(--bad)" : "none", outlineOffset: 1, color: "#fff", fontSize: 10, lineHeight: "20px", paddingLeft: 4, overflow: "hidden", whiteSpace: "nowrap" }}>{w > 3.5 ? `${tm(iv.start)}–${tm(iv.end)}` : ""}</div>;
+                            style={{ position: "absolute", left: `${l}%`, width: `${w}%`, top: 8, height: 20, borderRadius: 4, background: iv.category === "LEAVE" ? `repeating-linear-gradient(45deg,${color} 0 4px,var(--plan-ghost) 4px 8px)` : color, opacity: iv.status === "PLANNED" ? 0.78 : 1, outline: iv.exception ? "2px dashed var(--bad)" : "none", outlineOffset: 1, color: "#fff", fontSize: 10, lineHeight: "20px", paddingLeft: 4, overflow: "hidden", whiteSpace: "nowrap" }}>{w > 3.5 ? `${tm(iv.start)}–${tm(iv.end)}` : ""}</div>;
                         })}
                         {errs.filter((v) => v.windowStart).map((v, i) => <div key={`v${i}`} title={v.message} style={{ position: "absolute", left: `${pct(v.windowStart!)}%`, width: `${Math.max(0.5, pct(v.windowEnd ?? v.windowStart!) - pct(v.windowStart!))}%`, bottom: 2, height: 4, background: "var(--bad)", borderRadius: 2, opacity: 0.85 }} />)}
                         {now >= ws && now < we && <div style={{ position: "absolute", left: `${pct(now)}%`, top: 0, bottom: 0, width: 2, background: "var(--orange)" }} title="Şimdi" />}
