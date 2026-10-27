@@ -128,6 +128,34 @@ export const sessions = pgTable("sessions", {
   userAgent: text("user_agent"),
 }, (t) => [index("sess_user_idx").on(t.userId)]);
 
+/** Oturum kayıtları: kim, ne zaman girdi, ne kadar kaldı (aktif süre = sekme açık ve görünürken), hatalı denemeler */
+export const sessionLogs = pgTable("session_logs", {
+  id: id(),
+  sessionId: text("session_id"),               // sessions.id (oturum silinse de kayıt kalır)
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  username: text("username").notNull(),        // denenen kullanıcı adı (hatalı girişte de)
+  success: boolean("success").default(true).notNull(),
+  failReason: text("fail_reason"),             // WRONG_PASSWORD | UNKNOWN_USER | LOCKED | SUSPENDED | INACTIVE
+  loginAt: ts("login_at").defaultNow().notNull(),
+  lastSeenAt: ts("last_seen_at").defaultNow().notNull(),
+  logoutAt: ts("logout_at"),
+  endReason: text("end_reason"),               // LOGOUT | ADMIN | PASSWORD_CHANGE | DEACTIVATED
+  activeSeconds: integer("active_seconds").default(0).notNull(),
+  pageViews: integer("page_views").default(0).notNull(),
+  lastPath: text("last_path"),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+}, (t) => [index("slog_user_idx").on(t.userId, t.loginAt), index("slog_login_idx").on(t.loginAt), index("slog_sess_idx").on(t.sessionId)]);
+/** Oturum içinde açılan sayfalar */
+export const pageViews = pgTable("page_views", {
+  id: id(),
+  logId: text("log_id").notNull().references(() => sessionLogs.id, { onDelete: "cascade" }),
+  userId: text("user_id"),
+  path: text("path").notNull(),
+  at: ts("at").defaultNow().notNull(),
+  seconds: integer("seconds").default(0).notNull(),  // sayfada geçen aktif süre
+}, (t) => [index("pv_log_idx").on(t.logId, t.at)]);
+
 /** Dijital olarak kabul edilen metinler: hizmet sözleşmesi, KVKK aydınlatma vb. — sürümlü, yayınlanan sürüm değişmez */
 export const contractTemplates = pgTable("contract_templates", {
   id: id(),

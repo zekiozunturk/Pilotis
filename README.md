@@ -106,6 +106,11 @@ SMS_WEBHOOK_URL=… SMS_TOKEN=…                  # {to, text} JSON alan SMS k�
 - **Konum:** Kaptan “Görevlerim” ekranında *Konumu güncelle ve ilet* (tek sefer) veya *Görev boyunca otomatik paylaş* ile tarayıcı izniyle iletir; yalnız kendi vardiyasındaki araç (kılavuz kaptan: kılavuz/palamar botları). Tarayıcı konumu yalnız HTTPS'te verir. Konum paylaşılmayan araçlar için sunum modunda ÖRNEK konum gösterilir (`DEMO_LOGINS=0` ile kapanır).
 - Harita karoları: OSM ücretsiz karo sunucusu düşük trafik içindir; canlıda yoğun kullanımda bir karo sağlayıcısı (ör. MapTiler, Stadia) anahtarıyla değiştirilmelidir.
 
+## Yunus asistan, sesli görev bildirimi ve oturum kayıtları (v0.17)
+- **Yunus** (sağ alt): ekran ipuçları, terim/bilgi noktası açıklamaları, soru-cevap. `ANTHROPIC_API_KEY` tanımlıysa yanıtlar yapay zekâyla (model `YUNUS_MODEL`, varsayılan `claude-haiku-5-5`) üretilir; tanımlı değilse yerleşik bilgi tabanı (`src/data/yunus.ts`) ve terminoloji sözlüğü kullanılır.
+- **Görev duyurusu:** saha olayı işi ilk kez “Başladı” durumuna aldığında ve iş kapatıldığında operasyon/işletme yöneticisi ile sistem yöneticisine bildirim düşer; açık PILOTIS sekmesinde Yunus çıkar, başlangıçta bir, bitişte art arda üç gemi zili çalar ve görevi Türkçe okur. Tarayıcılar sesi sayfada bir tıklamadan sonra açar.
+- **Oturum kayıtları:** Sistem yönetimi → Oturum kayıtları. Aktif süre yalnız sekme görünürken sayılır (dakikada bir nabız); 15 dk hareketsiz ve çıkış yapılmamış oturum “Ayrıldı” görünür. CSV indirilebilir.
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

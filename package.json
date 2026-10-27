@@ -1,6 +1,6 @@
 {
   "name": "pilotis",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "private": true,
   "description": "PILOTIS — Pilotage Integrated Logistics, Operations & Tariff Information System",
   "scripts": {

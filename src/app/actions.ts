@@ -14,7 +14,7 @@ import { canTransition, OP_STATUS_TRANSITIONS, type Role } from "@/lib/workflow"
 import { computeOperation, loadOperation, nextOperationRef, recordAudit } from "@/lib/ops";
 import { createHash } from "node:crypto";
 import { imoValid } from "@/lib/exchange/parse";
-import { notifyBillingDecided, notifyBillingPending, notifyNewRequest, notifyOpClosed, notifyRequestDecided } from "@/lib/op-notify";
+import { notifyBillingDecided, notifyBillingPending, notifyNewRequest, notifyOpClosed, notifyOpEnded, notifyOpStarted, notifyRequestDecided } from "@/lib/op-notify";
 import { calculate as calcEngine, selectTariffVersion as pickVersion } from "@/lib/tariff/engine";
 import { loadTariffs, ruleStatusMap } from "@/lib/ops";
 import { getFxTable } from "@/lib/fx";
@@ -165,6 +165,8 @@ async function recordEventImpl(formData: FormData) {
   }
   if (transition && current !== transition.to) {
     await db.update(s.operations).set({ opStatus: transition.to as "STARTED", version: o.op.version + 1, updatedAt: new Date() }).where(eq(s.operations.id, o.op.id));
+    // ilk başlangıç (molanın bitişi değil) yöneticilere duyurulur
+    if (transition.to === "STARTED" && current !== "PAUSED") await notifyOpStarted(o.op.id);
   }
   await recordAudit("operation", ref, `EVENT:${type}`, { assetId, note });
   revalidatePath(`/operasyonlar/${ref}`);
@@ -189,6 +191,7 @@ async function closeOperationImpl(formData: FormData) {
   await db.update(s.operations).set({ opStatus: outcome as "COMPLETED", version: o.op.version + 1, updatedAt: new Date() }).where(eq(s.operations.id, o.op.id));
   await recordAudit("operation", ref, `CLOSE:${outcome}`, { reason });
   await notifyOpClosed(o.op.id, outcome, reason);
+  await notifyOpEnded(o.op.id, outcome, reason);
   revalidatePath(`/operasyonlar/${ref}`);
 }
 

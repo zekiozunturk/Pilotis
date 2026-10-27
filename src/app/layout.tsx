@@ -17,6 +17,10 @@ import { htmlAttrs, DEVICE_SCRIPT, THEMES } from "@/lib/ui-prefs";
 import { ThemeQuick } from "@/components/ThemeQuick";
 import { MenuToggle } from "@/components/MenuToggle";
 import { CommandPalette, TopTools } from "@/components/CommandPalette";
+import { Yunus } from "@/components/Yunus";
+import { ActivityBeacon } from "@/components/ActivityBeacon";
+import { APP_VERSION } from "@/lib/version";
+import { aiConfigured } from "@/lib/yunus";
 
 export const metadata: Metadata = {
   title: { default: "PILOTIS — Yalova Pilotaj", template: "%s · PILOTIS" },
@@ -101,12 +105,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <main className="main">
               {children}
               <div className="footer">
-                <span><b>PILOTIS</b> v0.4 · Faz 3 + TL/fiyat listesi · {BRAND.slogan}</span>
+                <span><b>PILOTIS</b> v{APP_VERSION} · {BRAND.slogan}</span>
                 <span>Zamanlar Europe/Istanbul gösterilir, UTC saklanır.</span>
               </div>
             </main>
           </div>
         </div>
+        <ActivityBeacon />
+        <Yunus announce={user.roles.some((r) => ["OPERATIONS_MANAGER", "BUSINESS_MANAGER", "SYSTEM_ADMIN"].includes(r))} ai={aiConfigured()} external={external} />
       </body>
     </html>
   );

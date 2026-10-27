@@ -6,6 +6,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import type { Role } from "./workflow";
+import { endLogs, logLogin } from "./session-log";
+/** Çerezdeki belirtecin veritabanı kimliği (oturum kaydı için) */
+export async function currentSessionId() { const t = (await cookies()).get(SESSION_COOKIE)?.value; return t ? tokenHash(t) : null; }
 
 export const ROLE_LABELS: Record<Role, string> = {
   SYSTEM_ADMIN: "Sistem yöneticisi", BUSINESS_MANAGER: "İşletme yöneticisi", OPERATIONS_MANAGER: "Operasyon yöneticisi",
@@ -36,13 +39,16 @@ export const currentUser = cache(async (): Promise<SessionUser | null> => {
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
   const h = await headers();
-  await db.insert(s.sessions).values({ id: tokenHash(token), userId, expiresAt: new Date(Date.now() + SESSION_DAYS * 864e5), ip: (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || null, userAgent: h.get("user-agent")?.slice(0, 200) ?? null });
+  const ip = (h.get("x-forwarded-for") ?? h.get("x-real-ip") ?? "").split(",")[0].trim() || null, userAgent = h.get("user-agent")?.slice(0, 300) ?? null;
+  await db.insert(s.sessions).values({ id: tokenHash(token), userId, expiresAt: new Date(Date.now() + SESSION_DAYS * 864e5), ip, userAgent });
+  const [u] = await db.select({ un: s.users.username, em: s.users.email }).from(s.users).where(eq(s.users.id, userId));
+  await logLogin({ sessionId: tokenHash(token), userId, username: u?.un ?? u?.em ?? userId, ip, userAgent });
   (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.COOKIE_SECURE === "1", maxAge: SESSION_DAYS * 86400 });
 }
 export async function destroySession() {
   const c = await cookies();
   const t = c.get(SESSION_COOKIE)?.value;
-  if (t) await db.delete(s.sessions).where(eq(s.sessions.id, tokenHash(t)));
+  if (t) { await endLogs([tokenHash(t)], "LOGOUT"); await db.delete(s.sessions).where(eq(s.sessions.id, tokenHash(t))); }
   for (const k of [SESSION_COOKIE, "pilotis_role", "pilotis_party", "pilotis_person"]) c.delete(k);
 }
 

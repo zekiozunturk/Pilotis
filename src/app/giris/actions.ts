@@ -4,6 +4,9 @@ import { eq, or, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, EXTERNAL_ROLES } from "@/lib/session";
+import { logFailedLogin, type FailReason } from "@/lib/session-log";
+import { headers } from "next/headers";
+async function failLog(name: string, reason: FailReason, userId: string | null) { try { const h = await headers(); await logFailedLogin(name, reason, userId, (h.get("x-forwarded-for") ?? h.get("x-real-ip") ?? "").split(",")[0].trim() || null, h.get("user-agent")?.slice(0, 300) ?? null); } catch (e) { console.error("oturum kaydı", e); } }
 import type { Role } from "@/lib/workflow";
 
 export type LoginState = { ok: false; message: string; user?: string } | null;
@@ -26,15 +29,16 @@ export async function login(_: LoginState, f: FormData): Promise<LoginState> {
   if (!id || !pw) return { ok: false, message: "Kullanıcı adı ve şifre gerekli", user: id };
   const [u] = await db.select().from(s.users).where(or(eq(s.users.username, id), sql`lower(${s.users.email}) = ${id}`));
   const fail = "Kullanıcı adı veya şifre hatalı";
-  if (!u || !u.active) return { ok: false, message: fail, user: id };
-  if (u.lockedUntil && u.lockedUntil > new Date()) return { ok: false, message: `Çok sayıda hatalı deneme — hesap ${Math.ceil((u.lockedUntil.getTime() - Date.now()) / 60000)} dakika kilitli`, user: id };
+  if (!u || !u.active) { await failLog(id, u ? "INACTIVE" : "UNKNOWN_USER", u?.id ?? null); return { ok: false, message: fail, user: id }; }
+  if (u.lockedUntil && u.lockedUntil > new Date()) { await failLog(id, "LOCKED", u.id); return { ok: false, message: `Çok sayıda hatalı deneme — hesap ${Math.ceil((u.lockedUntil.getTime() - Date.now()) / 60000)} dakika kilitli`, user: id }; }
   if (!verifyPassword(pw, u.passwordHash)) {
     const n = u.failedLogins + 1;
     await db.update(s.users).set({ failedLogins: n, lockedUntil: n >= LOCK_AFTER ? new Date(Date.now() + LOCK_MIN * 60000) : null }).where(eq(s.users.id, u.id));
     await db.insert(s.auditLog).values({ entity: "auth", entityId: u.id, action: "LOGIN_FAILED", actorId: u.username ?? u.email });
+    await failLog(id, "WRONG_PASSWORD", u.id);
     return { ok: false, message: n >= LOCK_AFTER ? `Hesap ${LOCK_MIN} dakika kilitlendi` : fail, user: id };
   }
-  if (u.partyId) { const [p] = await db.select().from(s.parties).where(eq(s.parties.id, u.partyId)); if (p?.registrationStatus === "SUSPENDED") return { ok: false, message: "Firma hesabı askıya alınmış — Yalova Pilotaj ile iletişime geçin", user: id }; }
+  if (u.partyId) { const [p] = await db.select().from(s.parties).where(eq(s.parties.id, u.partyId)); if (p?.registrationStatus === "SUSPENDED") { await failLog(id, "SUSPENDED", u.id); return { ok: false, message: "Firma hesabı askıya alınmış — Yalova Pilotaj ile iletişime geçin", user: id }; } }
   await db.update(s.users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() }).where(eq(s.users.id, u.id));
   await createSession(u.id);
   await db.insert(s.auditLog).values({ entity: "auth", entityId: u.id, action: "LOGIN", actorId: u.username ?? u.email });

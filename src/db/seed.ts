@@ -20,7 +20,7 @@ const usedNames = new Set<string>();
 function demoName() { for (;;) { const n = `${FIRST[(nameSeq * 5) % FIRST.length]} ${LAST[(nameSeq * 7 + 3) % LAST.length]}`; nameSeq++; if (!usedNames.has(n)) { usedNames.add(n); return n; } } }
 
 async function main() {
-  await db.execute(sql`TRUNCATE asset_positions, outbox, notifications, password_resets, sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE page_views, session_logs, asset_positions, outbox, notifications, password_resets, sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -249,6 +249,29 @@ async function main() {
   // Tesis koordinatları (harita) — üs gerçek konum; ÖRNEK tesisler Altınova/Hersek tersaneler hattına yerleştirildi
   const COORD: [string, number, number][] = [["Yalova Pilotaj Üssü%", 40.698627, 29.465756], ["ÖRNEK Altınova Gemi İnşa%", 40.702659, 29.469503], ["ÖRNEK Hersek%", 40.720883, 29.485433], ["ÖRNEK Marmara Yat%", 40.723663, 29.494223], ["ÖRNEK Tersane Rıhtımı%", 40.694616, 29.456386], ["ÖRNEK Altınova demir%", 40.738000, 29.472000]];
   for (const [n, la, lo] of COORD) await db.execute(sql`UPDATE facilities SET lat = ${la}, lon = ${lo} WHERE name LIKE ${n}`);
+
+  // ÖRNEK oturum geçmişi (son 14 gün) — yönetim ekranı sunumu için; IP alanı "ÖRNEK" olarak işaretlidir
+  {
+    const all = await db.select().from(s.users).where(eq(s.users.isDemo, true));
+    const PAGES: Record<string, string[]> = { admin: ["/yonetim", "/yonetim/kullanicilar", "/", "/ayarlar", "/yonetim/bildirimler"], yonetici: ["/", "/operasyonlar", "/analiz", "/planlama", "/tarife"], kaptan: ["/saha", "/operasyonlar", "/terminoloji"], romorkor: ["/saha", "/filo", "/operasyonlar"], kiyi: ["/", "/operasyonlar", "/planlama", "/saha"], musteri: ["/portal", "/portal/belgeler", "/operasyonlar", "/portal/gemilerim"], muhasebe: ["/muhasebe", "/operasyonlar", "/kurlar", "/analiz"] };
+    const UA = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36 Edg/141.0"];
+    let seed = 7; const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+    for (const u of all) {
+      const pages = PAGES[u.username ?? ""] ?? ["/"];
+      for (let d = 13; d >= 1; d--) {
+        if (rnd() < 0.25) continue;
+        const login = new Date(Date.now() - d * 864e5); login.setUTCHours(5 + Math.floor(rnd() * 9), Math.floor(rnd() * 60), 0, 0);
+        const spanMin = 8 + Math.floor(rnd() * 170), activeSec = Math.floor(spanMin * 60 * (0.35 + rnd() * 0.5));
+        const nViews = 2 + Math.floor(rnd() * 9), out = new Date(login.getTime() + spanMin * 60000);
+        const mobile = ["kaptan", "romorkor"].includes(u.username ?? "") ? 1 + Math.floor(rnd() * 2) : rnd() < 0.15 ? 1 : rnd() < 0.5 ? 3 : 0;
+        const [lg] = await db.insert(s.sessionLogs).values({ userId: u.id, username: u.username ?? u.email, success: true, loginAt: login, lastSeenAt: out, logoutAt: rnd() < 0.6 ? out : null, endReason: null, activeSeconds: activeSec, pageViews: nViews, lastPath: pages[(nViews - 1) % pages.length], ip: "ÖRNEK", userAgent: UA[mobile] }).returning();
+        await db.update(s.sessionLogs).set({ endReason: lg.logoutAt ? "LOGOUT" : null }).where(eq(s.sessionLogs.id, lg.id));
+        await db.insert(s.pageViews).values(Array.from({ length: nViews }, (_, i) => ({ logId: lg.id, userId: u.id, path: pages[i % pages.length], at: new Date(login.getTime() + (i * spanMin * 60000) / nViews), seconds: Math.floor(activeSec / nViews) })));
+        if (rnd() < 0.08) await db.insert(s.sessionLogs).values({ userId: u.id, username: u.username ?? u.email, success: false, failReason: "WRONG_PASSWORD", loginAt: new Date(login.getTime() - 60000), lastSeenAt: new Date(login.getTime() - 60000), logoutAt: new Date(login.getTime() - 60000), ip: "ÖRNEK", userAgent: UA[mobile] });
+      }
+    }
+    await db.insert(s.sessionLogs).values({ username: "administrator", success: false, failReason: "UNKNOWN_USER", loginAt: new Date(Date.now() - 2 * 864e5), lastSeenAt: new Date(Date.now() - 2 * 864e5), logoutAt: new Date(Date.now() - 2 * 864e5), ip: "ÖRNEK", userAgent: "python-requests/2.32" });
+  }
 
   console.log("Tohumlama tamam.");
   process.exit(0);

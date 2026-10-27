@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { endUserLogs } from "@/lib/session-log";
 import { eq } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { requireUser, ROLE_LABELS } from "@/lib/session";
@@ -33,13 +34,15 @@ export async function userAction(f: FormData) {
   const me = await admin();
   const id = String(f.get("id")), act = String(f.get("act"));
   if (id === me.id && ["deactivate", "role"].includes(act)) throw new Error("Kendi hesabınızı kapatamazsınız");
-  if (act === "deactivate" || act === "activate") { await db.update(s.users).set({ active: act === "activate" }).where(eq(s.users.id, id)); if (act === "deactivate") await db.delete(s.sessions).where(eq(s.sessions.userId, id)); }
+  if (act === "deactivate" || act === "activate") { await db.update(s.users).set({ active: act === "activate" }).where(eq(s.users.id, id)); if (act === "deactivate") { await endUserLogs(id, "DEACTIVATED"); await db.delete(s.sessions).where(eq(s.sessions.userId, id)); } }
   if (act === "unlock") await db.update(s.users).set({ failedLogins: 0, lockedUntil: null }).where(eq(s.users.id, id));
+  if (act === "logout") await endUserLogs(id, "ADMIN");
   if (act === "logout") await db.delete(s.sessions).where(eq(s.sessions.userId, id));
   if (act === "reset") {
     const pw = String(f.get("password") ?? "");
     const p = passwordProblem(pw); if (p) throw new Error(p);
     await db.update(s.users).set({ passwordHash: hashPassword(pw), mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(s.users.id, id));
+    await endUserLogs(id, "PASSWORD_CHANGE");
     await db.delete(s.sessions).where(eq(s.sessions.userId, id));
   }
   await audit(me.username ?? me.email, `USER_${act.toUpperCase()}`, id);

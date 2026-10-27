@@ -3,6 +3,7 @@ import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { fmtDT } from "@/lib/format";
 import { requireAdmin } from "./_guard";
+import { APP_VERSION } from "@/lib/version";
 import { partyAction } from "./actions";
 
 export const metadata = { title: "Sistem yönetimi" };
@@ -23,12 +24,12 @@ export default async function Yonetim() {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Sistem yönetimi</h1><div className="muted">Kullanıcılar, müşteri kayıtları, oturum güvenliği ve sistem durumu.</div></div>
-        <div className="toolbar"><Link className="btn orange" href="/yonetim/kullanicilar">Kullanıcıları yönet</Link><Link className="btn secondary" href="/yonetim/bildirimler">E-posta ve SMS</Link><Link className="btn secondary" href="/ayarlar/tema">Tema Stüdyosu</Link><Link className="btn secondary" href="/aktarim">Excel aktarım</Link></div>
+        <div><h1>Sistem yönetimi</h1><div className="muted">Kullanıcılar, müşteri kayıtları, oturum güvenliği ve sistem durumu · PILOTIS v{APP_VERSION}</div></div>
+        <div className="toolbar"><Link className="btn orange" href="/yonetim/kullanicilar">Kullanıcıları yönet</Link><Link className="btn" href="/yonetim/oturumlar">Oturum kayıtları</Link><Link className="btn secondary" href="/yonetim/bildirimler">E-posta ve SMS</Link><Link className="btn secondary" href="/ayarlar/tema">Tema Stüdyosu</Link><Link className="btn secondary" href="/aktarim">Excel aktarım</Link></div>
       </div>
       <div className="tiles" style={{ marginBottom: 16 }}>
         <Link href="/yonetim/kullanicilar" className="tile"><div className="l">Aktif kullanıcı</div><div className="v">{users}</div></Link>
-        <div className="tile"><div className="l">Şu an oturumu açık</div><div className="v">{sess}</div></div>
+        <Link href="/yonetim/oturumlar?durum=acik" className="tile"><div className="l">Şu an oturumu açık</div><div className="v">{sess}</div><div className="d">Oturum kayıtları ›</div></Link>
         <div className="tile"><div className="l">Onay bekleyen müşteri kaydı</div><div className="v">{pending.length}</div>{pending.length > 0 && <div className="d down">İnceleyin</div>}</div>
         <div className="tile"><div className="l">Kilitli hesap · son 24 sa hatalı giriş</div><div className="v">{locked} · {failed24}</div></div>
         <div className="tile"><div className="l">Veritabanı boyutu</div><div className="v">{dbsize}</div><div className="d">Yedekleme durumu yedekleme modülüyle gelecek</div></div>
@@ -54,7 +55,7 @@ export default async function Yonetim() {
           <p className="muted small">Portaldan kayıt olan firma talep oluşturabilir; talepler cari onaylanana kadar “cari onayı bekliyor” işaretiyle planlamaya düşer.</p>
         </div>
         <div className="card">
-          <h2>Son güvenlik olayları</h2>
+          <h2>Son güvenlik olayları <Link href="/yonetim/oturumlar" className="small" style={{ fontWeight: 400 }}>tüm oturum kayıtları ›</Link></h2>
           <table><tbody>{auth.map((a) => <tr key={a.id}><td className="small" style={{ whiteSpace: "nowrap" }}>{fmtDT(a.at)}</td><td><span className={`badge ${a.action === "LOGIN_FAILED" ? "bad" : "grey"}`}>{ACT[a.action] ?? a.action}</span></td><td className="mono small">{a.actorId}</td></tr>)}</tbody></table>
         </div>
       </div>

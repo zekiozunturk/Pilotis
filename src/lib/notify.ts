@@ -10,11 +10,11 @@ import { OPERATOR, BRAND } from "@/data/catalog";
 import { storage } from "./storage";
 import type { Role } from "./workflow";
 
-export type Kind = "REQUEST_NEW" | "BILLING_PENDING" | "BILLING_DECIDED" | "REQUEST_DECIDED" | "OP_COMPLETED" | "ACCRUAL_PENDING" | "TASK_ASSIGNED" | "REGISTRATION" | "USER_INVITED" | "PASSWORD_RESET" | "REPORT" | "TEST";
+export type Kind = "REQUEST_NEW" | "BILLING_PENDING" | "BILLING_DECIDED" | "REQUEST_DECIDED" | "OP_COMPLETED" | "ACCRUAL_PENDING" | "TASK_ASSIGNED" | "REGISTRATION" | "USER_INVITED" | "PASSWORD_RESET" | "REPORT" | "TEST" | "OP_STARTED" | "OP_ENDED";
 export const KIND_LABEL: Record<Kind, string> = {
   REQUEST_NEW: "Yeni talep", BILLING_PENDING: "Muhatap onayı bekleniyor", BILLING_DECIDED: "Muhatap kararı", REQUEST_DECIDED: "Talep kararı",
   OP_COMPLETED: "İş tamamlandı", ACCRUAL_PENDING: "Tahakkuk bekliyor", TASK_ASSIGNED: "Yeni görev", REGISTRATION: "Yeni müşteri kaydı",
-  USER_INVITED: "Kullanıcı daveti", PASSWORD_RESET: "Şifre sıfırlama", REPORT: "Zamanlanmış rapor", TEST: "Deneme",
+  USER_INVITED: "Kullanıcı daveti", PASSWORD_RESET: "Şifre sıfırlama", REPORT: "Zamanlanmış rapor", TEST: "Deneme", OP_STARTED: "Görev başladı", OP_ENDED: "Görev bitti",
 };
 /** Hangi olaylar SMS'e uygun (kısa, zamana duyarlı) */
 const SMS_KINDS: Kind[] = ["REQUEST_DECIDED", "BILLING_PENDING", "TASK_ASSIGNED", "OP_COMPLETED"];

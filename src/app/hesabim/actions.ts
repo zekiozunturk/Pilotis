@@ -1,5 +1,6 @@
 "use server";
 import { and, eq, ne } from "drizzle-orm";
+import { endUserLogs } from "@/lib/session-log";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
@@ -19,6 +20,7 @@ export async function changePassword(_: PwState, f: FormData): Promise<PwState> 
   await db.update(s.users).set({ passwordHash: hashPassword(nw), mustChangePassword: false }).where(eq(s.users.id, u.id));
   // diğer cihazlardaki oturumlar kapatılır
   const t = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
+  await endUserLogs(u.id, "PASSWORD_CHANGE", createHash("sha256").update(t).digest("hex"));
   await db.delete(s.sessions).where(and(eq(s.sessions.userId, u.id), ne(s.sessions.id, createHash("sha256").update(t).digest("hex"))));
   await db.insert(s.auditLog).values({ entity: "user", entityId: u.id, action: "PASSWORD_CHANGED", actorId: u.username ?? u.email });
   if (row.mustChangePassword) { const { homeFor } = await import("../giris/actions"); redirect(await homeFor(u.roles)); }

@@ -15,7 +15,11 @@ export function TermSup({ n, title, definition, children }: { n: number; title: 
     <span ref={ref} style={{ position: "relative", whiteSpace: "nowrap" }}>
       {children}
       <sup>
-        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Terim ${n}: ${title} — açıklamayı göster`}
+        <button type="button" onClick={() => {
+            // Yunus açıksa açıklamayı o anlatır
+            if ((window as unknown as { __yunus?: boolean }).__yunus) { window.dispatchEvent(new CustomEvent("yunus:say", { detail: { title: `#${n} ${title}`, text: definition, link: `/terminoloji#t${n}`, linkLabel: "Sözlükte aç" } })); return; }
+            setOpen(!open);
+          }} aria-expanded={open} aria-label={`Terim ${n}: ${title} — açıklamayı göster`}
           style={{ border: 0, background: "none", padding: "0 1px", cursor: "pointer", color: "var(--orange)", font: "700 10px var(--mono)" }}>{n}</button>
       </sup>
       {open && (
