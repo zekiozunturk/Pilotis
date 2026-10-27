@@ -11,8 +11,16 @@ import { CONTRACT_SEED } from "../data/contracts";
 import { hashPassword } from "../lib/password";
 import { textHash } from "../lib/contracts-hash";
 
+
+/** Sunum personeli için örnek ad-soyad (gerçek kişi değildir; kayıtlar ÖRNEK işaretlidir) */
+const FIRST = ["Mehmet", "Ahmet", "Mustafa", "Ali", "Hüseyin", "Hasan", "İbrahim", "Murat", "Emre", "Burak", "Serkan", "Okan", "Cem", "Kemal", "Erkan", "Volkan", "Tolga", "Onur", "Kaan", "Selim", "Barış", "Uğur", "Tamer", "Levent", "Orhan", "Yusuf", "Ömer", "Gökhan", "Sinan", "Erdem", "Cengiz", "Halil", "Recep", "Fatih", "Kadir", "Engin", "Taner", "Bülent", "Deniz", "Ayşe", "Elif", "Zeynep"];
+const LAST = ["Yılmaz", "Kaya", "Demir", "Şahin", "Çelik", "Yıldız", "Yıldırım", "Öztürk", "Aydın", "Özdemir", "Arslan", "Doğan", "Kılıç", "Aslan", "Çetin", "Kara", "Koç", "Kurt", "Özkan", "Şimşek", "Polat", "Korkmaz", "Erdoğan", "Güneş", "Aksoy", "Tekin", "Avcı", "Kaplan", "Bulut", "Denizci", "Karadeniz", "Sarı", "Bayram", "Uçar", "Ateş", "Tunç", "Ekinci", "Gürel", "Acar", "Ergin", "Turan"];
+let nameSeq = 0;
+const usedNames = new Set<string>();
+function demoName() { for (;;) { const n = `${FIRST[(nameSeq * 5) % FIRST.length]} ${LAST[(nameSeq * 7 + 3) % LAST.length]}`; nameSeq++; if (!usedNames.has(n)) { usedNames.add(n); return n; } } }
+
 async function main() {
-  await db.execute(sql`TRUNCATE outbox, notifications, password_resets, sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
+  await db.execute(sql`TRUNCATE asset_positions, outbox, notifications, password_resets, sessions, contract_acceptances, contract_templates, import_rows, import_batches, import_mappings, report_schedules, reports, payment_matches, payments, manual_allocations, invoice_lines, invoices, cost_entries, asset_meters, asset_downtime, participations, deviations, shifts, terms, exchange_rates, app_settings, reference_cases, document_approvals, cart_items, carts, calculation_results, document_versions, timeline_events, assignments, service_lines, service_requests,
     billing_approvals, operations, op_seq, port_calls, vessels, facilities, party_roles, users, personnel_sensitive, certificates,
     personnel, fleet_assets, business_rules, regulation_sources, tariff_versions, tariff_families, operation_types, open_issues, parties, audit_log CASCADE`);
 
@@ -148,20 +156,20 @@ async function main() {
   const tugAssets = new Map((await db.select().from(s.fleetAssets)).map((a) => [a.name, a.id]));
   const people: { id: string; crewRole: string; tug?: string; team?: string; letter?: string; name: string; rotationTeam: string | null }[] = [];
   for (const t of teamsOf(rot)) for (const r of rot.roles) {
-    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${r.label} · ${t.tugName} · ${t.letter}`, title: r.label, unit: `${t.tugName} ekipleri`, crewRole: r.code, homeAssetId: tugAssets.get(t.tugName) ?? null, workProfile: "STCW_MLC", rotationTeam: t.key, isDemo: true }).returning();
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${demoName()}`, title: r.label, unit: `${t.tugName} ekipleri`, crewRole: r.code, homeAssetId: tugAssets.get(t.tugName) ?? null, workProfile: "STCW_MLC", rotationTeam: t.key, isDemo: true }).returning();
     people.push({ id: p.id, crewRole: r.code, tug: t.tugName, letter: t.letter, name: p.fullName, rotationTeam: t.key });
   }
   // Yedek havuzu (ekibe atanmamış) — 2 kişi örnek
   for (const [cr, title] of [["KAPTAN", "Römorkör Kaptanı"], ["PIMCI", "Pimci"]] as const) {
-    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${title} · Yedek`, title, unit: "Yedek havuzu", crewRole: cr, workProfile: "STCW_MLC", isDemo: true }).returning();
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${demoName()}`, title, unit: "Yedek havuzu", crewRole: cr, workProfile: "STCW_MLC", isDemo: true }).returning();
     people.push({ id: p.id, crewRole: cr, name: p.fullName, rotationTeam: null });
   }
   for (let i = 1; i <= 3; i++) {
-    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK Kılavuz Kaptan ${i}`, title: "Kılavuz Kaptan", unit: "Kılavuzluk", crewRole: "KILAVUZ", workProfile: "STCW_MLC", isDemo: true }).returning();
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${demoName()}`, title: "Kılavuz Kaptan", unit: "Kılavuzluk", crewRole: "KILAVUZ", workProfile: "STCW_MLC", isDemo: true }).returning();
     people.push({ id: p.id, crewRole: "KILAVUZ", name: p.fullName, rotationTeam: null });
   }
   for (let i = 1; i <= 2; i++) {
-    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK Kıyı Operasyon ${i}`, title: "Kıyı Operasyon Sorumlusu", unit: "Operasyon", crewRole: "KIYI_OPS", workProfile: "IS_KANUNU", isDemo: true }).returning();
+    const [p] = await db.insert(s.personnel).values({ fullName: `ÖRNEK ${demoName()}`, title: "Kıyı Operasyon Sorumlusu", unit: "Operasyon", crewRole: "KIYI_OPS", workProfile: "IS_KANUNU", isDemo: true }).returning();
     people.push({ id: p.id, crewRole: "KIYI_OPS", name: p.fullName, rotationTeam: null });
   }
   // Yeterlik belgeleri — biri süresi dolmuş, biri yakında dolacak (planlama kontrolü örneği)
@@ -226,7 +234,7 @@ async function main() {
     { username: "admin", email: "admin@pilotis.local", name: "Sistem Yöneticisi", title: "Sistem yöneticisi", roles: ["SYSTEM_ADMIN"] },
     { username: "yonetici", email: "yonetici@yalovapilotaj.com", name: "ÖRNEK İşletme Yöneticisi", title: "Genel müdür", roles: ["BUSINESS_MANAGER"] },
     { username: "kaptan", email: "kaptan@yalovapilotaj.com", name: pilot.name.replace("ÖRNEK ", ""), title: "Kılavuz kaptan", roles: ["PILOT"], personnelId: pilot.id },
-    { username: "romorkor", email: "romorkor@yalovapilotaj.com", name: tugMaster.name.replace("ÖRNEK ", "").split(" · ")[0] + " · R1-A", title: "Römorkör kaptanı", roles: ["TUG_MASTER"], personnelId: tugMaster.id },
+    { username: "romorkor", email: "romorkor@yalovapilotaj.com", name: tugMaster.name.replace("ÖRNEK ", ""), title: "Römorkör kaptanı", roles: ["TUG_MASTER"], personnelId: tugMaster.id },
     { username: "kiyi", email: "kiyi@yalovapilotaj.com", name: shore.name.replace("ÖRNEK ", ""), title: "Kıyı operasyon sorumlusu", roles: ["SHORE_OPS"], personnelId: shore.id },
     { username: "musteri", email: "musteri@ornekacente.com.tr", name: "ÖRNEK Acente Yetkilisi", title: "Operasyon müdürü", roles: ["CUSTOMER", "BILLING_PARTY"], partyId: agent.id, partyAdmin: true, phone: "0 532 000 00 00" },
     { username: "muhasebe", email: "muhasebe@yalovapilotaj.com", name: "ÖRNEK Muhasebe Sorumlusu", title: "Muhasebe şefi", roles: ["ACCOUNTING"] },
@@ -237,6 +245,10 @@ async function main() {
   const [odeme] = await db.select().from(s.contractTemplates).where(eq(s.contractTemplates.code, "ODEME_TAAHHUDU"));
   const [mu] = await db.select().from(s.users).where(eq(s.users.username, "musteri"));
   for (const t of [sozl, odeme]) await db.insert(s.contractAcceptances).values({ templateId: t.id, partyId: agent.id, userId: mu.id, signerName: mu.name, signerTitle: mu.title, textHash: textHash(t.body), method: "CLICKWRAP", acceptedAt: new Date("2026-09-01T10:00:00+03:00") });
+
+  // Tesis koordinatları (harita) — üs gerçek konum; ÖRNEK tesisler Altınova/Hersek tersaneler hattına yerleştirildi
+  const COORD: [string, number, number][] = [["Yalova Pilotaj Üssü%", 40.698627, 29.465756], ["ÖRNEK Altınova Gemi İnşa%", 40.702659, 29.469503], ["ÖRNEK Hersek%", 40.720883, 29.485433], ["ÖRNEK Marmara Yat%", 40.723663, 29.494223], ["ÖRNEK Tersane Rıhtımı%", 40.694616, 29.456386], ["ÖRNEK Altınova demir%", 40.738000, 29.472000]];
+  for (const [n, la, lo] of COORD) await db.execute(sql`UPDATE facilities SET lat = ${la}, lon = ${lo} WHERE name LIKE ${n}`);
 
   console.log("Tohumlama tamam.");
   process.exit(0);

@@ -8,6 +8,10 @@ import { fmtDT } from "@/lib/format";
 import { Board } from "@/components/Board";
 import { db, schema as sc } from "@/db";
 import { and, asc, inArray, lte, gt, eq } from "drizzle-orm";
+import { homeVariant, HOME_LABEL } from "@/lib/home-variant";
+import { getLiveFleet } from "@/lib/live-fleet";
+import { LiveMaps } from "@/components/LiveMaps";
+import { setHomeVariant } from "./ayarlar/home-actions";
 
 export const metadata = { title: "Kokpit" };
 
@@ -33,18 +37,22 @@ export default async function Home() {
   const prodRules = rules.filter((r) => ["APPROVED", "IN_FORCE"].includes(r.status)).length;
   const byStatus = rules.reduce<Record<string, number>>((a, r) => ((a[r.status] = (a[r.status] ?? 0) + 1), a), {});
 
+  const hv = await homeVariant();
+  const live = hv.variant === "MAP" ? await getLiveFleet() : null;
   return (
     <>
       <div className="pagehead">
         <div>
-          <h1>Operasyon Kokpiti</h1>
+          <h1>{hv.variant === "MAP" ? "Harita Kokpiti" : "Operasyon Kokpiti"}</h1>
           <div className="muted">{OPERATOR.legalName} · Yalova Hizmet Sahası · {OPERATOR.motto}</div>
         </div>
         <div className="toolbar">
           <Link className="btn orange" href="/operasyonlar/yeni">+ Yeni talep</Link>
           <Link className="btn secondary" href="/tarife">Hesap simülatörü</Link>
+          <form action={setHomeVariant}><input type="hidden" name="variant" value={hv.variant === "MAP" ? "CLASSIC" : "MAP"} /><button className="btn secondary" title="Seçiminiz Ayarlar'dan da değiştirilebilir">{hv.variant === "MAP" ? `⇄ ${HOME_LABEL.CLASSIC}` : `🗺 ${HOME_LABEL.MAP}`}</button></form>
         </div>
       </div>
+      {live && <LiveMaps initial={live} aisConfigured={!!process.env.AISSTREAM_API_KEY} />}
 
       {noBilling.length > 0 && (
         <div className="alert warn" style={{ marginBottom: 16 }}>

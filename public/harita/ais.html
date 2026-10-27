@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canlı AIS — VesselFinder</title>
+<style>html,body{margin:0;padding:0;height:100%;background:#dfe7f1;font:13px system-ui,sans-serif}</style>
+</head>
+<body>
+<!-- VesselFinder ücretsiz gömülebilir AIS haritası: https://www.vesselfinder.com/embed -->
+<script>
+  var q = new URLSearchParams(location.search);
+  var width = "100%";
+  var height = String(Math.max(240, parseInt(q.get("h") || "460", 10)));
+  var latitude = q.get("lat") || "40.7150";
+  var longitude = q.get("lon") || "29.4800";
+  var zoom = q.get("z") || "12";
+  var names = q.get("names") === "1";
+</script>
+<script src="https://www.vesselfinder.com/aismap.js"></script>
+<noscript>Canlı gemi haritası için JavaScript gereklidir.</noscript>
+</body>
+</html>

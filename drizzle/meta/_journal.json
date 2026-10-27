@@ -99,6 +99,13 @@
       "when": 1792677989224,
       "tag": "0013_filo_fotograf",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793122241549,
+      "tag": "0014_canli_konum",
+      "breakpoints": true
     }
   ]
 }

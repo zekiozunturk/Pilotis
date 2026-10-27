@@ -6,6 +6,8 @@ import { INVOICE_NOTE } from "@/data/catalog";
 import { fmtDT } from "@/lib/format";
 import { PolicyForm } from "../kurlar/forms";
 import { LeadForm } from "./portal-form";
+import { HomeChoice } from "./home-choice";
+import { homeVariant } from "@/lib/home-variant";
 import { minLeadHours } from "@/lib/lead-time";
 
 export const metadata = { title: "Ayarlar" };
@@ -20,6 +22,7 @@ export default async function Settings() {
   return (
     <>
       <div className="pagehead"><div><h1>Ayarlar</h1><div className="muted">İşletme genelinde geçerli tercihler. Her değişiklik gerekçesi ve yapanıyla kaydedilir; kayıtlı hesaplar geriye dönük değişmez.</div></div><a className="btn secondary" href="/ayarlar/tema">🎨 Tema Stüdyosu</a></div>
+      {await (async () => { const hv = await homeVariant(); return <div style={{ marginBottom: 16 }}><HomeChoice personal={hv.personal} corporate={hv.corporate} canSetDefault={["SYSTEM_ADMIN", "BUSINESS_MANAGER"].includes(role)} /></div>; })()}
       <div className="grid g2">
         <div className="card">
           <h2>Müşteri portalı</h2>

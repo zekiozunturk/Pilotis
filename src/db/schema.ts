@@ -75,6 +75,7 @@ export const users = pgTable("users", {
   partyAdmin: boolean("party_admin").default(false).notNull(), // müşteri firmasında kullanıcı ekleyebilen yetkili
   notifyEmail: boolean("notify_email").default(true).notNull(),
   notifySms: boolean("notify_sms").default(false).notNull(),
+  homeVariant: text("home_variant"),          // null = kurum varsayılanı | CLASSIC | MAP
   createdAt: createdAt(), updatedAt: updatedAt(),
 });
 
@@ -867,3 +868,18 @@ export const importMappings = pgTable("import_mappings", {
   createdBy: text("created_by").notNull(),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex("impmap_uq").on(t.entity, t.name)]);
+
+/** Araç konumları — kaptanın cihazından (izinle), AIS'ten veya sunum örneği. En son kayıt aracın güncel konumudur. */
+export const assetPositions = pgTable("asset_positions", {
+  id: id(),
+  assetId: text("asset_id").notNull().references(() => fleetAssets.id),
+  lat: numeric("lat", { precision: 9, scale: 6 }).notNull(),
+  lon: numeric("lon", { precision: 9, scale: 6 }).notNull(),
+  accuracyM: integer("accuracy_m"),
+  speedKn: numeric("speed_kn", { precision: 5, scale: 1 }),
+  heading: integer("heading"),
+  source: text("source").default("DEVICE").notNull(), // DEVICE | AIS | MANUAL
+  userId: text("user_id").references(() => users.id),
+  personnelId: text("personnel_id").references(() => personnel.id),
+  at: ts("at").defaultNow().notNull(),
+}, (t) => [index("apos_asset_at_idx").on(t.assetId, t.at)]);

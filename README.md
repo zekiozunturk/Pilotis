@@ -99,6 +99,13 @@ SMS_WEBHOOK_URL=… SMS_TOKEN=…                  # {to, text} JSON alan SMS k�
 ```
 Şifremi unuttum: tek kullanımlık, 30 dakikalık bağlantı (yalnız özeti saklanır). Sunum modunda ve SMTP yokken bağlantı ekranda gösterilir; canlıda `DEMO_LOGINS=0`. Geçici şifreyle giren kullanıcı şifresini değiştirmeden başka ekrana geçemez. Müşteri firma yetkilisi kendi firmasına kullanıcı davet eder (şifre e-postayla gönderilmez; 72 saatlik etkinleştirme bağlantısı).
 
+## Harita kokpiti ve canlı konum
+**Ayarlar → Ana sayfa görünümü**'nden “Harita kokpiti” seçilir (kişisel; yönetici kurum varsayılanını belirler). Üstte iki harita, altında klasik kokpitin tamamı bulunur.
+- **Sol — bölgedeki gemi trafiği:** VesselFinder ücretsiz gömülü canlı AIS haritası (anahtar gerekmez). Kendi verimiz için ücretsiz [aisstream.io](https://aisstream.io) anahtarı `AISSTREAM_API_KEY` olarak tanımlanırsa “PILOTIS AIS” sekmesi kendi haritamızda gemileri gösterir (anahtar sunucuda kalır).
+- **Sağ — filomuz:** OpenStreetMap + OpenSeaMap. Her araçta kaptan adı ve görevdeyse hizmet verilen gemi; **kırmızı bayrak = görevde, beyaz bayrak = boşta**. Tıklayınca görev, ekip, vardiya bitişi ve konum kaynağı. 15 sn'de bir yenilenir.
+- **Konum:** Kaptan “Görevlerim” ekranında *Konumu güncelle ve ilet* (tek sefer) veya *Görev boyunca otomatik paylaş* ile tarayıcı izniyle iletir; yalnız kendi vardiyasındaki araç (kılavuz kaptan: kılavuz/palamar botları). Tarayıcı konumu yalnız HTTPS'te verir. Konum paylaşılmayan araçlar için sunum modunda ÖRNEK konum gösterilir (`DEMO_LOGINS=0` ile kapanır).
+- Harita karoları: OSM ücretsiz karo sunucusu düşük trafik içindir; canlıda yoğun kullanımda bir karo sağlayıcısı (ör. MapTiler, Stadia) anahtarıyla değiştirilmelidir.
+
 ## Önemli kurallar (kodda zorunlu)
 - Talep eden taraf otomatik fatura muhatabı değildir (R-018).
 - Bilinmeyen GT sıfır kabul edilmez; hesap yalnız **saha doğrulamalı** GT ile yapılır.

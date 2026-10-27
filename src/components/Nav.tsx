@@ -17,12 +17,12 @@ const ROLE_NAV: Record<string, string[] | "ALL"> = {
   SYSTEM_ADMIN: "ALL",
   BUSINESS_MANAGER: ["/", "/operasyonlar", "/operasyonlar/yeni", "/portal", "/planlama", "/planlama/rotasyon", "/muhasebe", "/analiz", "/gemiler", "/taraflar", "/filo", "/personel", "/katalog", "/tarife", "/kurlar", "/kurallar", "/acik-konular", "/terminoloji", "/aktarim", "/ayarlar", "/hesabim"],
   OPERATIONS_MANAGER: ["/", "/operasyonlar", "/operasyonlar/yeni", "/portal", "/planlama", "/planlama/rotasyon", "/analiz", "/gemiler", "/taraflar", "/filo", "/personel", "/katalog", "/tarife", "/kurlar", "/kurallar", "/acik-konular", "/terminoloji", "/aktarim", "/ayarlar", "/hesabim"],
-  PLANNER: ["/", "/operasyonlar", "/operasyonlar/yeni", "/planlama", "/planlama/rotasyon", "/analiz", "/gemiler", "/filo", "/personel", "/terminoloji", "/aktarim", "/hesabim"],
-  SHORE_OPS: ["/", "/saha", "/operasyonlar", "/operasyonlar/yeni", "/portal", "/planlama", "/gemiler", "/taraflar", "/filo", "/terminoloji", "/aktarim", "/hesabim"],
+  PLANNER: ["/", "/operasyonlar", "/operasyonlar/yeni", "/planlama", "/planlama/rotasyon", "/analiz", "/gemiler", "/filo", "/personel", "/terminoloji", "/aktarim", "/ayarlar", "/hesabim"],
+  SHORE_OPS: ["/", "/saha", "/operasyonlar", "/operasyonlar/yeni", "/portal", "/planlama", "/gemiler", "/taraflar", "/filo", "/terminoloji", "/aktarim", "/ayarlar", "/hesabim"],
   PILOT: FIELD, TUG_MASTER: FIELD, CREW: FIELD,
-  ACCOUNTING: ["/", "/muhasebe", "/operasyonlar", "/analiz", "/taraflar", "/tarife", "/kurlar", "/terminoloji", "/aktarim", "/hesabim"],
-  TARIFF_OFFICER: ["/", "/operasyonlar", "/katalog", "/tarife", "/kurlar", "/kurallar", "/acik-konular", "/terminoloji", "/aktarim", "/hesabim"],
-  AUDITOR: ["/", "/operasyonlar", "/muhasebe", "/analiz", "/tarife", "/kurlar", "/kurallar", "/terminoloji", "/hesabim"],
+  ACCOUNTING: ["/", "/muhasebe", "/operasyonlar", "/analiz", "/taraflar", "/tarife", "/kurlar", "/terminoloji", "/aktarim", "/ayarlar", "/hesabim"],
+  TARIFF_OFFICER: ["/", "/operasyonlar", "/katalog", "/tarife", "/kurlar", "/kurallar", "/acik-konular", "/terminoloji", "/aktarim", "/ayarlar", "/hesabim"],
+  AUDITOR: ["/", "/operasyonlar", "/muhasebe", "/analiz", "/tarife", "/kurlar", "/kurallar", "/terminoloji", "/ayarlar", "/hesabim"],
 };
 const GROUPS = ALL;
 const navFor = (role: string) => { const allow = ROLE_NAV[role] ?? ["/", "/operasyonlar", "/hesabim"]; return ALL.map((g) => ({ ...g, items: g.items.filter(([h]) => allow === "ALL" || allow.includes(h)) })).filter((g) => g.items.length); };

@@ -7,6 +7,7 @@ import { profileByCode } from "@/lib/planning/profiles";
 import { fmtDT, fmtMin, fmtTime } from "@/lib/format";
 import { OPERATION_TYPES } from "@/data/catalog";
 import { STATUS_SETS } from "@/lib/labels";
+import { LocationShare } from "@/components/LocationShare";
 
 export const metadata = { title: "Görevlerim" };
 export const dynamic = "force-dynamic";
@@ -49,6 +50,12 @@ export default async function Saha() {
   const ev = evaluate(iv, profile, now - 7 * DAY, now);
   const rest24 = ev.metrics.minRest24h, rest7 = ev.metrics.minRest7d;
   const lastWorkEnd = Math.max(0, ...shifts.filter((x) => x.sh.category === "WORK" && x.sh.endAt.getTime() <= now).map((x) => x.sh.endAt.getTime()));
+  // Konum paylaşılabilecek araçlar: vardiyadaki araç; kılavuz kaptan için kılavuz/palamar botları
+  const boats = ["PILOT", "SHORE_OPS"].includes(role) ? await db.select().from(s.fleetAssets).where(inArray(s.fleetAssets.type, ["PILOT_BOAT", "MOORING_BOAT"])) : [];
+  const shiftAssets = [cur?.a, next?.a].filter((x): x is NonNullable<typeof x> => !!x);
+  const shareAssets = [...new Map([...shiftAssets, ...boats].map((a) => [a.id, { id: a.id, label: `${a.code ? `${a.code} · ` : ""}${a.name}${a.id === cur?.a?.id ? " (şu anki vardiya)" : a.id === next?.a?.id && !cur?.a ? " (sonraki vardiya)" : ""}` }])).values()];
+  const [lp] = u.id ? await db.select().from(s.assetPositions).where(eq(s.assetPositions.userId, u.id)).orderBy(desc(s.assetPositions.at)).limit(1) : [];
+  const lastPos = lp ? { at: lp.at.toISOString(), lat: Number(lp.lat), lon: Number(lp.lon), accuracyM: lp.accuracyM } : null;
   const restNow = cur?.sh.category === "WORK" ? 0 : lastWorkEnd ? (now - lastWorkEnd) / 60000 : null;
   const team = person.rotationTeam ? await db.select({ id: s.personnel.id, n: s.personnel.fullName, t: s.personnel.title }).from(s.personnel).where(and(eq(s.personnel.rotationTeam, person.rotationTeam), eq(s.personnel.active, true))) : [];
   const gauge = (v: number | null, min: number | null | undefined, label: string) => {
@@ -83,6 +90,8 @@ export default async function Saha() {
           {restNow != null && <div className="muted">Son görevden bu yana dinlenme: {fmtMin(Math.round(restNow))}</div>}
         </>}
       </div>
+
+      <div style={{ marginTop: 16 }}><LocationShare assets={shareAssets} defaultAssetId={(cur?.a ?? next?.a)?.id ?? shareAssets[0]?.id ?? null} last={lastPos} /></div>
 
       <h2 style={{ margin: "18px 0 8px" }}>Dinlenme durumum <span className="muted small">({profile.name.split(" (")[0]})</span></h2>
       <div className="tiles">
